@@ -206,8 +206,8 @@ def main():
 
     # Constants
     DEFAULT_EMAIL = 'email@example.com'
-    DEFAULT_OUTPUT_DIR = '/Users/josediogomoura/Desktop/BioFago/github/data/output/test'
-    DEFAULT_API_KEY = 'ef05af50609263725afaf2809dcf73cdfa08'
+    #DEFAULT_OUTPUT_DIR = 'your_output_path'
+    #DEFAULT_API_KEY = 'your_api_key'
     DEFAULT_TERM = '"Erwinia amylovora"[Organism] AND (latest[filter] AND all[filter] NOT anomalous[filter])'
 
     import argparse
