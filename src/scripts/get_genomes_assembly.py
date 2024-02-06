@@ -205,11 +205,10 @@ def main():
     """
 
     # Constants
-    DEFAULT_EMAIL = 'email@example.com'
-    #DEFAULT_OUTPUT_DIR = 'your_output_path'
-    #DEFAULT_API_KEY = 'your_api_key'
-    DEFAULT_TERM = '"Erwinia amylovora"[Organism] AND (latest[filter] AND all[filter] NOT anomalous[filter])'
-
+    DEFAULT_EMAIL = 'pg45965@alunos.uminho.pt'
+    DEFAULT_OUTPUT_DIR = '/Users/josediogomoura/Desktop/BioFago/github/data/output/phages'
+    DEFAULT_API_KEY = None
+    DEFAULT_TERM = '(("Erwinia amylovora"[Organism] OR ("Erwinia amylovora"[Organism] OR Erwinia amylovora[All Fields])) AND phage[All Fields]) AND viruses[filter]'
     import argparse
     parser = argparse.ArgumentParser(description='Download genomes from NCBI Assembly.')
     parser.add_argument('--search_term', type=str, help='Search term for NCBI Assembly', default=DEFAULT_TERM)
@@ -227,5 +226,9 @@ if __name__ == "__main__":
     main()
 
 # Run the script with the following command:
-# python get_genomes.py --search_term '"Erwinia amylovora"[Organism] AND (latest[filter] AND all[filter] NOT anomalous[filter])'
+# python get_genomes_assembly.py --search_term '"Erwinia amylovora"[Organism] AND (latest[filter] AND all[filter] NOT anomalous[filter])'
 # --output_dir '/Users/josediogomoura/Desktop/BioFago/github/data/output/erwinia_gbff_genomes'
+
+
+
+
