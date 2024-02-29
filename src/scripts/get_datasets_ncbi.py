@@ -1,56 +1,62 @@
-import os
 import subprocess
-
-def download_genomes(search_term: str, output_path: str, format: str):
-    search_term_clean = search_term.replace(' ', '_')
-    output_dir = os.path.join(output_path, 'genomes_' + search_term_clean.lower())
-    os.makedirs(output_dir, exist_ok=True)
-
-    datasets_command = ["/Users/josediogomoura/bin/datasets",
-                        "download",
-                        "genome",
-                        "taxon",
-                        search_term,
-                        "--include",
-                        format,
-                        "--dehydrated",
-                        "--filename",
-                        os.path.join(output_dir, search_term_clean + "_dehydrated.zip")]
-
-    subprocess.run(datasets_command, check=True)
+import logging
 
 
-def unzip_genomes(output_path: str, search_term: str):
-    search_term_clean = search_term.replace(' ', '_')
-    output_dir = os.path.join(output_path, 'genomes_' + search_term_clean.lower())
+def setup_logging(file_path):
+    """
+    Sets up logging to file, ensuring it saves in the results folder.
+    """
+    log_format = '%(asctime)s %(message)s'
+    logging.basicConfig(filename=file_path, level=logging.DEBUG, format=log_format, filemode='w')
 
-    unzip_command = ["unzip",
-                     os.path.join(output_dir, search_term_clean + "_dehydrated.zip"),
-                     "-d",
-                     output_dir]
-
-    subprocess.run(unzip_command, check=True)
+    # Check if there are handlers already to avoid adding a new handler multiple times
+    if not logging.getLogger().hasHandlers():
+        logging.getLogger().addHandler(logging.FileHandler(file_path))
 
 
-def rehydrate_data(output_path: str, search_term: str):
-    search_term_clean = search_term.replace(' ', '_')
-    output_dir = os.path.join(output_path, 'genomes_' + search_term_clean.lower())
+def download_genome_dataset(keyword, output_directory):
+    command = [
+        "datasets",
+        "download",
+        "genome",
+        "taxon",
+        keyword,
+        "--filename",
+        f"{output_directory}/ncbi_dataset.zip"
+    ]
+    try:
+        subprocess.run(command, check=True)
+        print("Genome dataset downloaded successfully!")
+    except subprocess.CalledProcessError as e:
+        print(f"Error downloading dataset: {e}")
 
-    rehydrate_command = ["/Users/josediogomoura/bin/datasets",
-                         "rehydrate",
-                         "--directory",
-                         output_dir]
 
-    subprocess.run(rehydrate_command, check=True)
+def unzip_genome_dataset(output_directory):
+    # Unzip the downloaded file
+    command = [
+        "unzip",
+        f"{output_directory}/ncbi_dataset.zip",
+        "-d",
+        output_directory
+    ]
+
+    try:
+        subprocess.run(command, check=True)
+        print("Genome dataset unzipped successfully!")
+    except subprocess.CalledProcessError as e:
+        print(f"Error unzipping dataset: {e}")
 
 
 def main():
-    search_term = "Erwinia amylovora"
-    output_path = '/Users/josediogomoura/Documents/BioFago/BioFago/data/all_genomes_erwinia'
-    format = "gbff"
-    download_genomes(search_term, output_path, format)
-    unzip_genomes(output_path, search_term)
-    rehydrate_data(output_path, search_term)
+    # Example usage:
+    keyword = "Erwinia"
+    output_directory = "/Users/josediogomoura/Documents/BioFago/BioFago/data/all_genomes_erwinia/fasta"
+    log_file = "/Users/josediogomoura/Documents/BioFago/BioFago/data/all_genomes_erwinia/fasta/download.log"
+
+    setup_logging(log_file)
+    download_genome_dataset(keyword, output_directory)
+    unzip_genome_dataset(output_directory)
+
 
 if __name__ == "__main__":
     main()
