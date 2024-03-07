@@ -17,12 +17,16 @@ def configure_logging(log_file):
 
 
 class RoaryRunner:
-    def __init__(self, prokka_folder, roary_output_folder, roary_path='roary', threads=8):
+    def __init__(self, prokka_folder, roary_output_folder, roary_path='roary', threads=8, blastp_identity=95,
+                 core_gene_identity=99):
+
         self.prokka_folder = Path(prokka_folder)
         self.roary_output_folder = Path(roary_output_folder)
         self.roary_path = roary_path
         self.threads = threads
         self.gff_files = []
+        self.blastp_identity = blastp_identity
+        self.core_gene_identity = core_gene_identity
 
         # Set up the log file
         log_file = self.roary_output_folder / 'roary_runner.log'
@@ -51,10 +55,9 @@ class RoaryRunner:
         # Ensure the Roary output folder exists
         self.roary_output_folder.mkdir(parents=True, exist_ok=True)
 
-        # Run Roary if more than one GFF file is found
         if len(self.gff_files) > 1:
             gff_paths = ' '.join(str(gff) for gff in self.gff_files)
-            roary_cmd = f"{self.roary_path} -f {self.roary_output_folder} -e -n -p {self.threads} -v {gff_paths}"
+            roary_cmd = f"{self.roary_path} -f {self.roary_output_folder} -e -n -p {self.threads} -i {self.blastp_identity} -cd {self.core_gene_identity} -v {gff_paths}"
             logging.info(f"Running Roary: {roary_cmd}")
             try:
                 subprocess.run(roary_cmd, shell=True, check=True, text=True)
@@ -66,10 +69,12 @@ class RoaryRunner:
 
 
 def main():
-    prokka_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/prokka/LPS_locus_13genes_FN434113'
-    roary_output_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/roary/LPS_locus_13genes_FN434113'
+    prokka_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/lps/prokka'
+    roary_output_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/lps/roary'
 
-    roary_runner = RoaryRunner(prokka_folder, roary_output_folder)
+    roary_runner = RoaryRunner(prokka_folder, roary_output_folder, threads=8, blastp_identity=95,
+                               core_gene_identity=99)
+
     roary_runner.find_gff_files()
     roary_runner.run_roary()
 
