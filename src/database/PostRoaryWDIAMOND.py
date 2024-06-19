@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 from Bio import SeqIO
 import tempfile
-from src.PostRoaryPlotter import GenePresenceAbsencePlotter
+from src.database.PostRoaryPlotter import GenePresenceAbsencePlotter
 import pandas as pd
 import logging
 
@@ -167,11 +167,11 @@ class DiamondRunner:
 
 
 def DIAMONDrunner():
-    protein_csv_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/tests/protein_sequences.csv"
+    protein_csv_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/tests/protein_sequences.csv_output"
     diamond_db = "erwinia_loci_db"
-    output_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/tests/output.csv"  # Adjusted to be relative to the base_output_dir
-    fasta_db_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/input/loci_ref_sequences/compiled_fasta/compiled_loci.fasta"
-    base_output_dir = "/Users/josediogomoura/Documents/BioFago/BioFago/data/tests"  # Base directory for all outputs
+    output_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/tests/output.csv_output"  # Adjusted to be relative to the base_output_dir
+    fasta_db_path = "/data/genomes/loci_ref_sequences/compiled_fasta/compiled_loci.fasta"
+    base_output_dir = "/data/tests"  # Base directory for all outputs
 
     # Initialize DiamondRunner with the base_output_dir parameter
     diamond_runner = DiamondRunner(protein_csv_path, diamond_db, output_path, fasta_db_path=fasta_db_path, base_output_dir=base_output_dir)
@@ -180,19 +180,19 @@ def DIAMONDrunner():
 
 def main_workflow():
     # Paths configuration
-    gene_presence_absence_csv = '/Volumes/Crucial_X9/BioFago/data/ApproachFlankGenes/capsule/roary_90_1710520453/gene_presence_absence.csv'
+    gene_presence_absence_csv = '/Volumes/Crucial_X9/BioFago/data/ApproachFlankGenes/capsule/roary_90_1710520453/gene_presence_absence.csv_output'
     json_path = '/Volumes/Crucial_X9/BioFago/data/genomesAllErwinia/ncbi_dataset/ncbi_dataset/data/assembly_data_report.jsonl'
-    species_to_defined_type_csv_initial = '/Users/josediogomoura/Documents/BioFago/BioFago/data/tests/accession_to_species_to_pattern_90.csv'
-    species_to_defined_type_csv_final = '/Users/josediogomoura/Documents/BioFago/BioFago/data/tests/species_to_defined_type_90.csv'
+    species_to_defined_type_csv_initial = '/Users/josediogomoura/Documents/BioFago/BioFago/data/tests/accession_to_species_to_pattern_90.csv_output'
+    species_to_defined_type_csv_final = '/Users/josediogomoura/Documents/BioFago/BioFago/data/tests/species_to_defined_type_90.csv_output'
     prokka_base_path = '/Volumes/Crucial_X9/BioFago/data/ALLApproachFlankGenes/capsule/prokka'
-    output_csv_for_prokka = '/Users/josediogomoura/Documents/BioFago/BioFago/data/tests/protein_sequences.csv'
+    output_csv_for_prokka = '/Users/josediogomoura/Documents/BioFago/BioFago/data/tests/protein_sequences.csv_output'
 
 
     # Step 1: Load, process data, and create initial CSV
     species_plotter = SpeciesTypePlotter(gene_presence_absence_csv, json_path, species_to_defined_type_csv_initial)
     species_plotter.load_and_process_data()
 
-    # Step 1.5: Append pattern column to CSV, sorted by frequency (Mandatory step)
+    # Step 1.5: Append pattern column to CSV, sorted by frequency
     SpeciesTypePlotter.append_pattern_column_to_csv_sorted_by_frequency(species_to_defined_type_csv_initial, species_to_defined_type_csv_final, prefix='CL')
 
     # Step 2: Extract sequences with ProkkaCDSExtractor

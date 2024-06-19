@@ -203,16 +203,17 @@ class CSVManipulator:
 
 def main():
     # part one for typing w BLAST:
-    csv_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/LPS/90_blastp/division_genes.csv"
-    output_dir = "/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/LPS/90_blastp/Typing"
+    csv_path = "/data/AApurify/cellulose/99_blastp/division_genes.csv_output"
+
+    output_dir = "/data/AApurify/cellulose/99_blastp/Typing"
     blast_typing = BlastTyping(csv_path, output_dir)
     blast_typing.process()
 
     # part two for nomenclature:
-    output_path = '/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/LPS/90_blastp/Nomenclature/nomenclature.csv'
-    base_dir = "/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/LPS/90_blastp/Typing"
-    identity_threshold = 90
-    reference_dir = "/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/LPS/90_blastp/Typing/OL01"
+    output_path = '/data/AApurify/cellulose/99_blastp/Nomenclature/nomenclature.csv_output'
+    base_dir = "/data/AApurify/cellulose/99_blastp/Typing"
+    identity_threshold = 99
+    reference_dir = "/data/AApurify/cellulose/99_blastp/Typing/CL01"
 
     nomenclature = BlastNomenclature(base_dir, reference_dir, output_path, identity_threshold)
     nomenclature.parse_reference_folder()
@@ -221,10 +222,9 @@ def main():
     nomenclature.export_to_csv()
 
     # part three for linking the csvs:
-    # Example usage
-    gene_info_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/LPS/90_blastp/division_genes.csv'
-    gene_name_type_tag_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/LPS/90_blastp/Nomenclature/nomenclature.csv'
-    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/LPS/90_blastp/Nomenclature/final_curation.csv'
+    gene_info_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/cellulose/99_blastp/division_genes.csv_output'
+    gene_name_type_tag_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/cellulose/99_blastp/Nomenclature/nomenclature.csv_output'
+    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/AApurify/cellulose/99_blastp/Nomenclature/final_curation.csv_output'
 
     csv_linker = CSVManipulator(gene_info_csv, gene_name_type_tag_csv)
     final_df = csv_linker.process_csvs()

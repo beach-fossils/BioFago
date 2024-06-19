@@ -4,7 +4,7 @@ from collections import defaultdict
 import glob
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from BlastRunner import BlastRunner
+from src.database.BlastRunner import BlastRunner
 import logging
 from Bio import SeqIO
 from pathlib import Path
@@ -146,6 +146,47 @@ class PostBlastOutput:
             else:
                 logging.warning(f"No FASTA file found for {filename}. Expected path: {fasta_file_path}")
 
+    def extract_regions_from_genomes_v2(self, extracted_folder):
+        strain_query_positions = defaultdict(lambda: {'min_start': float('inf'), 'max_end': -1})
+
+        with open(self.output_csv, 'r') as csvfile:
+            csvreader = csv.DictReader(csvfile)
+            for row in csvreader:
+                filename_query_key = (row['Filename'], row['Query'])
+                start = int(row['Query_start'])
+                end = int(row['Query_end'])
+
+                # Update the min_start and max_end to potentially include -20 and +20 bps around the region
+                strain_query_positions[filename_query_key]['min_start'] = min(
+                    strain_query_positions[filename_query_key]['min_start'], start)
+                strain_query_positions[filename_query_key]['max_end'] = max(
+                    strain_query_positions[filename_query_key]['max_end'], end)
+
+        Path(extracted_folder).mkdir(parents=True, exist_ok=True)
+
+        for (filename, query), positions in strain_query_positions.items():
+            min_start = max(1, positions['min_start'] - 200)  # Ensure we do not go below the start of the sequence
+            max_end = positions['max_end'] + 200  #
+
+            fasta_filename = f"{filename}.fasta"
+            fasta_file_path = Path(self.genomes_folder) / fasta_filename
+
+            if fasta_file_path.is_file():
+                for record in SeqIO.parse(fasta_file_path, "fasta"):
+                    if record.id == query:
+                        # Adjust max_end to not exceed the sequence length
+                        max_end = min(len(record.seq), max_end)
+
+                        extracted_sequence = record.seq[min_start - 1:max_end]  # Adjust for Python's 0-based indexing
+                        output_file = Path(extracted_folder) / f"{filename}_{query}_extracted_sequence.fasta"
+                        with open(output_file, "w") as output_handle:
+                            SeqIO.write([SeqIO.SeqRecord(extracted_sequence, id=record.id, description="")],
+                                        output_handle, "fasta")
+                            logging.info(
+                                f"Extracted sequence for {query} in {filename}, min start: {min_start}, max end: {max_end}, length: {len(extracted_sequence)}")
+            else:
+                logging.warning(f"No FASTA file found for {filename}. Expected path: {fasta_file_path}")
+
 
 def move_files(src_folder, dest_folder, file_type=".fna"):
     if not os.path.exists(dest_folder):
@@ -155,29 +196,36 @@ def move_files(src_folder, dest_folder, file_type=".fna"):
         shutil.move(file_path, dest_folder)
 
 
+def main_move():
+    # to move files!
+    move_files("/Users/josediogomoura/Documents/BioFago/BioFago/data/genomesAllErwinia/ncbi_dataset/ncbi_dataset/data",
+               "/Users/josediogomoura/Documents/BioFago/BioFago/data/genomesAllErwinia/ncbi_dataset/ncbi_dataset/fasta",
+               file_type=".fna")
+
+
 def main():
     # Define paths and parameters
-    # genomes_folder_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/ncbi_dataset/data"
-    db_folder_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/lps/blast/db_folder"
-    results_folder_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/lps/blast/blast_results"
-    ref_seq_gb_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/input/loci_ref_sequences/LPS_locus_13genes_FN434113.gb"
-    extracted_genes_fasta = '/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/lps/flank_genes/flank_genes.fasta'
+    #genomes_folder_path = "/Volumes/Crucial_X9/BioFago/data/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/fasta_files"
+    db_folder_path = "/data/OtherSpecies/Erwinia_billingiae/srl/db_folder"
+    results_folder_path = "/data/OtherSpecies/Erwinia_billingiae/srl/blast_results"
+    # ref_seq_gb_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/ref_sequences/Capsule_locus_12genes_X77921.gb"
+    extracted_genes_fasta = '/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/srl/flank_genes/flank_genes.fasta'
 
     # Ensure output folders exist
     Path(db_folder_path).mkdir(parents=True, exist_ok=True)
     Path(results_folder_path).mkdir(parents=True, exist_ok=True)
 
-    # Extract flank genes and write to a FASTA file
-    logging.info("Extracting flank genes...")
-    flank_gene_extractor = FlankGeneExtractor(ref_seq_gb_path)
-    flank_gene_extractor.extract_flank_genes()
-    flank_gene_extractor.write_genes_to_fasta(extracted_genes_fasta)
+    # # Extract flank genes and write to a FASTA file
+    # logging.info("Extracting flank genes...")
+    # flank_gene_extractor = FlankGeneExtractor(ref_seq_gb_path)
+    # flank_gene_extractor.extract_flank_genes()
+    # flank_gene_extractor.write_genes_to_fasta(extracted_genes_fasta)
 
     # Collect all .fna genome files from subdirectories
     # Now you can use it like this
-    #src_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/ncbi_dataset/data"
-    dest_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/fasta_files"
-    #move_files(src_folder, dest_folder)
+    src_folder = "/data/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/data"
+    dest_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/fasta"
+    move_files(src_folder, dest_folder)
 
     # # Assuming BlastRunner can take a list of genome files
     logging.info("Initializing BlastRunner with collected genome files...")
@@ -192,16 +240,16 @@ def main():
     gene_blast_runner.run_blast_on_all_genomes()
 
     # Step 3: Compile BLAST results into a CSV
-    blast_results_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/lps/blast/blast_results'
-    genomes_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/fasta_files"
-    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/lps/blast/csv_folder/compiled_results.csv'
+    blast_results_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/srl/blast_results'
+    genomes_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/fasta"
+    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/srl/blast_csv/compiled_results.csv'
     log_file = os.path.join(os.path.dirname(output_csv), 'post_blast_output.log')
     #
     post_blast = PostBlastOutput(blast_results_folder, genomes_folder, output_csv, log_file)
     post_blast.compile_blast_results_to_csv()  # Compiles BLAST results into a CSV
     #
-    extracted_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/lps/extracted_seq"
-    post_blast.extract_regions_from_genomes(extracted_path)
+    extracted_path = "/data/OtherSpecies/Erwinia_billingiae/srl/extracted_sequences"
+    post_blast.extract_regions_from_genomes_v2(extracted_path)
 
     logging.info("Workflow completed successfully.")
 

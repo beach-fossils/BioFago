@@ -21,6 +21,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 class GenePresenceAbsencePlotter:
     def __init__(self, path_csv):
+        self.pattern_types = None
         self.path_csv = path_csv
         self.df_binary = None
         self.df_selected = None
@@ -40,6 +41,7 @@ class GenePresenceAbsencePlotter:
                 new_columns.append(simplified_name)
             else:
                 new_columns.append(col)  # Keep the original column name if no match is found
+
         self.df_binary.columns = new_columns
 
     def load_and_process_data(self):
@@ -162,10 +164,11 @@ class GenePresenceAbsenceCluster:
 
     def plot_heatmap(self):
         sns.clustermap(self.grouped_data, cmap='viridis', linewidths=.5, annot=False,
+                       yticklabels='auto',  # This should ensure labels are aligned with the data
                        cbar_kws={'label': 'Gene Presence/Absence'})
         plt.title('Clustermap of Gene Presence/Absence Across Species')
-        plt.xlabel('Genes')
-        plt.ylabel('Species')
+        plt.xlabel('Species')
+        plt.ylabel('Genes')
         plt.show()
 
     def process_and_plot(self):
@@ -210,5 +213,3 @@ class GenePresenceAbsencePivot:
         self.process_data()
         self.create_pivot_table()
         self.plot_heatmap()
-
-

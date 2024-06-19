@@ -69,14 +69,31 @@ class RoaryRunner:
 
 
 def main():
-    prokka_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/lps/prokka'
-    roary_output_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/lps/roary'
+    # prokka_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/cellulose/old_prokka'
+    # roary_output_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/ApproachFlankGenes/cellulose/roary_95'
+    #
+    # roary_runner = RoaryRunner(prokka_folder, roary_output_folder, threads=8, blastp_identity=95,
+    #                            core_gene_identity=99)
+    #
+    # roary_runner.find_gff_files()
+    # roary_runner.run_roary()
 
-    roary_runner = RoaryRunner(prokka_folder, roary_output_folder, threads=8, blastp_identity=95,
-                               core_gene_identity=99)
+    # run this 3 times for 3 different blastp_identity values (90, 95, 99)
 
-    roary_runner.find_gff_files()
-    roary_runner.run_roary()
+    prokka_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/cellulose/prokka'
+
+    for blastp_identity in [95]:
+        # if the folders dont exist, create them
+        roary_output_folder = f'/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/cellulose/roary_{blastp_identity}'
+        if not os.path.exists(roary_output_folder):
+            os.makedirs(roary_output_folder)
+        roary_runner = RoaryRunner(prokka_folder=prokka_folder, roary_output_folder=roary_output_folder, threads=8,
+                                   blastp_identity=blastp_identity,
+                                   core_gene_identity=99)
+        roary_runner.find_gff_files()
+        roary_runner.run_roary()
+
+    print("Done.")
 
 
 if __name__ == "__main__":
