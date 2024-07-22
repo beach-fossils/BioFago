@@ -3,10 +3,10 @@ import subprocess
 import pandas as pd
 from Bio import SeqIO
 import logging
-from src.assigning_types.Database import Database
-from src.database.BlastRunner import BlastRunner
-from src.database.FlankGenesForBlast import FlankGeneExtractor, PostBlastOutput
-from src.utils.extract_with_flank_genes import extract_with_flank_genes
+from assigning_types.Database import Database
+from database.BlastRunner import BlastRunner
+from database.FlankGenesForBlast import FlankGeneExtractor, PostBlastOutput
+from utils.extract_with_flank_genes import extract_with_flank_genes
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
