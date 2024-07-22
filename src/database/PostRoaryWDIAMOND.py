@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 from Bio import SeqIO
 import tempfile
-from src.database.PostRoaryPlotter import GenePresenceAbsencePlotter
+from database.PostRoaryPlotter import GenePresenceAbsencePlotter
 import pandas as pd
 import logging
 
