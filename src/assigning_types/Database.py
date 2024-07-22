@@ -5,7 +5,7 @@ import pandas as pd
 from Bio.Seq import Seq
 from Bio.Align import PairwiseAligner
 from Bio import SeqIO, SeqRecord, Seq
-from src.utils.get_prokka_faa_file import get_prokka_faa_file
+from utils.get_prokka_faa_file import get_prokka_faa_file
 import csv
 import tempfile
 import os
