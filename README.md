@@ -26,24 +26,24 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 
 2. Set up a Python virtual environment (optional but recommended):
 
-   # Create a virtual environment named 'biofago_env'
+   ### Create a virtual environment named 'biofago_env'
    ```bash
    python -m venv biofago_env
    ```
 
-   # Activate the virtual environment
+   ### Activate the virtual environment
    
-   ## On Windows:
+   #### On Windows:
    ```bash
    biofago_env\Scripts\activate
    ```
 
-   ## On Unix or MacOS:
+   #### On Unix or MacOS:
    ```
    source biofago_env/bin/activate
    ```
 
-   # Your command prompt should now show (biofago_env), indicating it's active
+   #### Your command prompt should now show (biofago_env), indicating it's active
    
 4. Install the required Python packages:
     
