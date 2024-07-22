@@ -4,7 +4,7 @@ from collections import defaultdict
 import glob
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from src.database.BlastRunner import BlastRunner
+from database.BlastRunner import BlastRunner
 import logging
 from Bio import SeqIO
 from pathlib import Path

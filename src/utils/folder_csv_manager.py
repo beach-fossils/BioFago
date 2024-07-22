@@ -7,7 +7,7 @@ from typing import List, Dict
 import pandas as pd
 import time
 
-from src.metrics_species_caller import new_run_species_metrics_finder
+from metrics_species_caller import new_run_species_metrics_finder
 
 
 def create_individual_folders(genomes_folder: Path) -> Path:

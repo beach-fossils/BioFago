@@ -6,11 +6,11 @@ import shutil
 import pandas as pd
 from Bio import SeqIO
 
-from src.crr_genotypes.crispr_analyzer import CRISPRAnalyzer
-from src.resistance.str_resistance import StrResistance
-from src.plasmids.plasmid_finder import PlasmidFinder
-from src.crr_genotypes.crr_genotype_finder import CRRFinder
-from src.assigning_types.assembly_statistics import FastaStatistics
+from crr_genotypes.crispr_analyzer import CRISPRAnalyzer
+from resistance.str_resistance import StrResistance
+from plasmids.plasmid_finder import PlasmidFinder
+from crr_genotypes.crr_genotype_finder import CRRFinder
+from assigning_types.assembly_statistics import FastaStatistics
 
 
 def process_genome(genome_dir: Path) -> Dict:
