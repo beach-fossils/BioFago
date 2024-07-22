@@ -1,6 +1,13 @@
-# BioFago Tool
+# BioFago_Erwinia Tool
 
-BioFago is a comprehensive genomic analysis tool designed for processing and analyzing bacterial genomes, with a focus on plasmid detection, resistance gene identification, and CRISPR array analysis.
+BioFago_Erwinia is a comprehensive genomic analysis tool designed for processing and analyzing bacterial genomes, specifically for *Erwinia amylovora*, the causative agent of fire blight in rosaceous plants. This tool focuses on:
+
+1. Relevant locus typing (capsule, cellulose, LPS, and sorbitol loci)
+2. Plasmid detection
+3. Streptomycin resistance gene identification
+4. CRISPR genotype analysis
+
+BioFago provides researchers and plant pathologists with a powerful platform for in-depth genomic characterisation of *E. amylovora* strains, facilitating studies on population dynamics, virulence factors, and antibiotic resistance in the context of fire blight management.
 
 ## Prerequisites
 
@@ -18,24 +25,33 @@ BioFago is a comprehensive genomic analysis tool designed for processing and ana
    ```
 
 2. Set up a Python virtual environment (optional but recommended):
-    
-    ```bash
-   python -m venv venv
+
+   #### Create a virtual environment named 'biofago_env'
+   ```bash
+   python -m venv biofago_env
+   ```
+
+   #### Activate the virtual environment
    
-    # On Windows
-    source venv/bin/activate  # On Windows, use venv\Scripts\activate
+   ##### On Windows:
+   ```bash
+   biofago_env\Scripts\activate
+   ```
+
+   ##### On Unix or MacOS:
+   ```
+   source biofago_env/bin/activate
+   ```
+
+   ##### Your command prompt should now show (biofago_env), indicating it's active
    
-    # On Unix or MacOS
-    source venv/bin/activate
-    ```
-   
-3. Install the required Python packages:
+4. Install the required Python packages:
     
     ```bash
    pip install -r requirements.txt
     ```
    
-4. Install BLAST:
+5. Install BLAST:
 
    
    This script will check if BLAST is already installed and at the correct version. If not, it will attempt to install or update BLAST.
@@ -43,12 +59,13 @@ BioFago is a comprehensive genomic analysis tool designed for processing and ana
    Note: The script requires sudo privileges on Linux systems and Homebrew on macOS. If you encounter any issues, please refer to the [BLAST manual installation instructions](https://www.ncbi.nlm.nih.gov/books/NBK279671/).
    
    ```bash
-  chmod +x external/blast/install_blast.sh
-  ./external/blast/install_blast.sh
+     chmod +x external/blast/install_blast.sh
+     ./external/blast/install_blast.sh
    ```        
 
 
-5. Install Docker:
+6. Install Docker:
+
 Follow the [official Docker installation guide](https://docs.docker.com/get-docker/) for your operating system.
 
 ## Configuration
