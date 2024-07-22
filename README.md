@@ -1,6 +1,13 @@
 # BioFago_Erwinia Tool
 
-BioFago is a comprehensive genomic analysis tool designed for processing and analyzing bacterial genomes, with a focus on plasmid detection, resistance gene identification, and CRISPR array analysis.
+BioFago is a comprehensive genomic analysis tool designed for processing and analyzing bacterial genomes, specifically for *Erwinia amylovora*, the causative agent of fire blight in rosaceous plants. This tool focuses on:
+
+1. Relevant locus typing (capsule, cellulose, LPS, and sorbitol loci)
+2. Plasmid detection
+3. Streptomycin resistance gene identification
+4. CRISPR genotype analysis
+
+BioFago provides researchers and plant pathologists with a powerful platform for in-depth genomic characterisation of *E. amylovora* strains, facilitating studies on population dynamics, virulence factors, and antibiotic resistance in the context of fire blight management.
 
 ## Prerequisites
 
