@@ -1,11 +1,11 @@
 import logging
 from pathlib import Path
-from src.metrics_species_caller import run_species_metrics_finder, setup_logging
-from src.extract_annotate_assign import extract_annotate_assign
-from src.resistance.str_resistance import StrResistance
-from src.utils.folder_csv_manager import create_individual_folders, run_species_metrics_for_all, update_species_csv
-from src.plasmids.plasmid_finder import PlasmidFinder
-from src.crr_genotypes.crr_genotype_finder import CRRFinder
+from metrics_species_caller import run_species_metrics_finder, setup_logging
+from extract_annotate_assign import extract_annotate_assign
+from resistance.str_resistance import StrResistance
+from utils.folder_csv_manager import create_individual_folders, run_species_metrics_for_all, update_species_csv
+from plasmids.plasmid_finder import PlasmidFinder
+from crr_genotypes.crr_genotype_finder import CRRFinder
 
 # Configure logging
 LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
