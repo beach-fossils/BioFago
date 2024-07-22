@@ -1,4 +1,4 @@
-# BioFago Tool
+# BioFago_Erwinia Tool
 
 BioFago is a comprehensive genomic analysis tool designed for processing and analyzing bacterial genomes, with a focus on plasmid detection, resistance gene identification, and CRISPR array analysis.
 
