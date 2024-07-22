@@ -17,11 +17,10 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 
 ## Installation
 
-1. Clone the repository:
-
+1. Clone the repository (dev branch):
    ```bash
-   git clone https://github.com/yourusername/biofago_tool.git
-   cd biofago_tool
+   git clone -b dev https://github.com/beach-fossils/BioFago.git
+   cd BioFago
    ```
 
 2. Set up a Python virtual environment (optional but recommended):
