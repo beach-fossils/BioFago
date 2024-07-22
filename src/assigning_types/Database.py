@@ -118,7 +118,7 @@ class Database:
 
     def create_faa_file(self, output_faa):
         """
-        Create a FASTA file with protein sequences from the loci data.
+        Create a FASTA file with protein sequences from the loci reference_crispr.
 
         :param output_faa: Path to the output FASTA file.
         """
@@ -453,9 +453,9 @@ class TypeAnalysis:
 
 
 if __name__ == "__main__":
-    base_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/cellulose/test_1'
-    reference_types = "/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/fully_gb_database/cellulose/curated_cellulose.gb"
-    prokka_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/cellulose/test_1/prokka'
+    base_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/assign_types/cellulose/test_1'
+    reference_types = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/assign_types/reference_types_database/cellulose/types_cellulose.gb"
+    prokka_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/assign_types/cellulose/test_1/prokka'
     proteins_faa = get_prokka_faa_file(prokka_folder)
 
     db_folder = os.path.join(base_folder, "db_folder")

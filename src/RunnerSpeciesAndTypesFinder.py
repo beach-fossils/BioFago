@@ -1,68 +1,61 @@
 import logging
-import os
 from pathlib import Path
-import shutil
-from src.MetricsSpeciesCaller import run_species_metrics_finder, setup_logging
-from src.ExtractAnnotateAssign import extract_annotate_assign
+from src.metrics_species_caller import run_species_metrics_finder, setup_logging
+from src.extract_annotate_assign import extract_annotate_assign
+from src.resistance.str_resistance import StrResistance
+from src.utils.folder_csv_manager import create_individual_folders, run_species_metrics_for_all, update_species_csv
+from src.plasmids.plasmid_finder import PlasmidFinder
+from src.crr_genotypes.crr_genotype_finder import CRRFinder
 
 # Configure logging
 LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 LOG_LEVEL = logging.DEBUG
 logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
+logger = logging.getLogger(__name__)
 
 
-def create_individual_folders(genomes_folder: str) -> Path:
-    """Move each genome to its individual folder."""
-    genomes_folder_path = Path(genomes_folder).resolve()
-    for genome_file in genomes_folder_path.glob('*.fasta'):
-        genome_dir = genomes_folder_path / genome_file.stem
-        os.makedirs(genome_dir, exist_ok=True)
-        shutil.move(str(genome_file), str(genome_dir / genome_file.name))
-        logging.info(f"Moved {genome_file} to {genome_dir}")
-    return genomes_folder_path
-
-
-def run_species_metrics_for_all(genomes_folder_path: Path, threshold_species: float):
-    """Run species metrics finder for all genomes in their individual folders."""
-    for genome_dir in genomes_folder_path.iterdir():
-        if genome_dir.is_dir():
-            for genome_file in genome_dir.glob('*.fasta'):
-                logging.info(f"Processing genome file: {genome_file}")
-                try:
-                    run_species_metrics_finder(str(genome_file), threshold_species)
-                except Exception as e:
-                    logging.error(f"Error in run_species_metrics_finder for {genome_file}: {e}")
-
-
-# def move_results_to_genome_folder(genome_dir: Path):
-#     """Move the species_finder and types_finder folders to the genome's individual folder."""
-#     species_finder_src = genome_dir.parent / 'species_finder'
-#     types_finder_src = genome_dir.parent / 'types_finder'
-#
-#     if species_finder_src.exists():
-#         shutil.move(str(species_finder_src), str(genome_dir / 'species_finder'))
-#         logging.info(f"Moved species_finder to {genome_dir}")
-#     if types_finder_src.exists():
-#         shutil.move(str(types_finder_src), str(genome_dir / 'types_finder'))
-#         logging.info(f"Moved types_finder to {genome_dir}")
-
-
-def run_species_and_types_finder(genomes_folder: str, threshold_species: float = 0.95):
+def run_species_and_types_finder(genomes_folder: Path, threshold_species: float = 0.95) -> None:
     """Run species metrics finder and types finder on all genomes in the folder."""
-    # Create individual folders for each genome
-    genomes_folder_path = create_individual_folders(genomes_folder)
+    try:
+        # Create individual folders for each genome
+        logger.info(f"Creating individual folders for genomes in: {genomes_folder}")
+        genomes_folder_path = create_individual_folders(genomes_folder)
 
-    # Run species metrics finder for each genome
-    run_species_metrics_for_all(genomes_folder_path, threshold_species)
-    # after this there will be a csv inside the species_finder folder with the species name
+        # Run species metrics finder for each genome
+        logger.info(f"Running species metrics finder for genomes in: {genomes_folder_path}")
+        run_species_metrics_for_all(genomes_folder_path, threshold_species)
+        # after this there will be a csv inside the species_finder folder with the species name
 
-    # Run extract and annotate assign on each genome folder
-    for genome_dir in genomes_folder_path.iterdir():
-        if genome_dir.is_dir():
-            extract_annotate_assign(genome_dir)
+        # Plasmid finder runs here
+        logger.info(f"Running plasmid finder for genomes in: {genomes_folder_path}")
+        plasmid_finder = PlasmidFinder()
+        plasmid_finder.process_all_genomes_in_folder(Path(genomes_folder_path))
 
+        # Sorbitol resistance finder runs here
+        logger.info(f"Running sorbitol resistance finder for genomes in: {genomes_folder_path}")
+        sorbitol_resistance = StrResistance()
+        sorbitol_resistance.process_all_genomes_in_folder(Path(genomes_folder_path))
+
+        # CRRFinder runs here
+        logger.info(f"Running CRRFinder for genomes in: {genomes_folder_path}")
+        for genome_dir in Path(genomes_folder_path).iterdir():
+            if genome_dir.is_dir():
+                for genome_file in genome_dir.glob('*.fasta'):
+                    crr_finder = CRRFinder(genome_file, genome_dir)
+                    crr_finder.analyze_genome()
+                    crr_finder.process_directory()
+
+        # Run extract and annotate assign on each genome folder
+        results = extract_annotate_assign(genomes_folder_path)
+        for genome_name, locus_name, locus_type, assign_confidence in results:
+            update_species_csv(genomes_folder_path, genome_name, locus_name, locus_type, assign_confidence)
+    except Exception as e:
+        logger.error(f"Error in run_species_and_types_finder: {e}")
 
 
 if __name__ == '__main__':
-    genomes_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/test_2/genomes2'
-    run_species_and_types_finder(genomes_folder, threshold_species=0.95)
+    try:
+        genomes_folder = Path('/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/test_2/genomes')
+        run_species_and_types_finder(genomes_folder, threshold_species=0.95)
+    except Exception as e:
+        logger.error(f"Error in __main__: {e}")

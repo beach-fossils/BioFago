@@ -120,8 +120,8 @@ def write_genes_to_fasta(output_fasta, first_gene_seq, last_gene_seq, first_gene
 def main():
     # # Reference database file and genomes genome
 
-    ref_db = "/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/fully_gb_database/cellulose/curated_cellulose.gb"
-    input_genome = "/Users/josediogomoura/Documents/BioFago/BioFago/data/results_sequenciados/sequences/PRR1_INIAV.fasta"
+    ref_db = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/assign_types/reference_types_database/cellulose/types_cellulose.gb"
+    input_genome = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/results_sequenciados/sequences/genomes.fasta"
     output_dir = '/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/cellulose/test_1'
 
     region = extract_with_flank_genes(source_output_dir=output_dir, ref_db=ref_db, input_genome=input_genome,
@@ -131,10 +131,10 @@ def main():
 
 
 
-    # ref_db = "/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/lps/curated_lps.gb"
-    # input_genome = "/Users/josediogomoura/Documents/BioFago/BioFago/data/results_sequenciados/sequences/PRR1_INIAV.fasta"
-    # output_dir = '/Users/josediogomoura/Documents/BioFago/BioFago/data/test1/assigning_types/first_test'
-    # results_file = '/Users/josediogomoura/Documents/BioFago/BioFago/data/test1/assigning_types/first_test/results.csv'
+    # ref_db = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/assign_types/lps/types_lps.gb"
+    # input_genome = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/results_sequenciados/sequences/genomes.fasta"
+    # output_dir = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/test1/assigning_types/first_test'
+    # results_file = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/test1/assigning_types/first_test/results.csv'
     #
     # # Ensure output directories exist
     # os.makedirs(output_dir, exist_ok=True)
@@ -147,14 +147,14 @@ def main():
     # last_gene_tag = assigner.db.last_gene['locus_tag']
     #
     # # Unify those sequences into one fasta file to the path
-    # extracted_genes_fasta = '/Users/josediogomoura/Documents/BioFago/BioFago/data/test1/assigning_types/first_test/first_last_genes.fasta'
-    # output_first_last = '/Users/josediogomoura/Documents/BioFago/BioFago/data/test1/assigning_types/first_test/first_last_genes/flank_genes.fasta'
+    # extracted_genes_fasta = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/test1/assigning_types/first_test/first_last_genes.fasta'
+    # output_first_last = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/test1/assigning_types/first_test/first_last_genes/flank_genes.fasta'
     #
     # write_genes_to_fasta(output_fasta=extracted_genes_fasta, first_gene_seq=first_gene_seq, last_gene_seq=last_gene_seq,
     #                      first_gene_tag=first_gene_tag, last_gene_tag=last_gene_tag)
     #
-    # db_folder_path = '/Users/josediogomoura/Documents/BioFago/BioFago/data/test1/assigning_types/first_test/blast/blast_results/db'
-    # results_folder_path = '/Users/josediogomoura/Documents/BioFago/BioFago/data/test1/assigning_types/first_test/blast'
+    # db_folder_path = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/test1/assigning_types/first_test/blast/blast_results/db'
+    # results_folder_path = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/test1/assigning_types/first_test/blast'
     # # Ensure directories exist
     # os.makedirs(db_folder_path, exist_ok=True)
     # os.makedirs(results_folder_path, exist_ok=True)
@@ -167,13 +167,13 @@ def main():
     # gene_blast_runner.run_blast_on_all_genomes()
     #
     # blast_results_folder = results_folder_path
-    # output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/test1/assigning_types/first_test/blast/csv/results.csv'
+    # output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/test1/assigning_types/first_test/blast/csv/results.csv'
     # log_file = os.path.join(os.path.dirname(output_csv), 'post_blast_output.log')
     #
     # post_blast = PostBlastOutput(blast_results_folder, genomes_folder, output_csv, log_file)
     # post_blast.compile_blast_results_to_csv()  # Compiles BLAST results into a CSV
     #
-    # extracted_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/test1/assigning_types/first_test/extracted_region"
+    # extracted_path = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/test1/assigning_types/first_test/extracted_region"
     # post_blast.extract_regions_from_genomes_v2(extracted_path)
     #
     # logging.info("Workflow completed successfully.")

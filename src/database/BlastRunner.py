@@ -129,7 +129,7 @@ class BlastResultsCompiler:
                         for line in file:
                             # Split the line by tab since BLAST format 6 is tab-delimited
                             row_data = line.strip().split('\t')
-                            # Insert the file name at the beginning of the row data
+                            # Insert the file name at the beginning of the row reference_crispr
                             csv_writer.writerow([file_name] + row_data)
 
 
@@ -267,16 +267,16 @@ def main():
     # PART 1:
 
     # Constants
-    REF_SEQ = '/Users/josediogomoura/Documents/BioFago/BioFago/data/genomes/loci_ref_sequences/fasta/Cellulose_locus_8genes_NZ_CAPB01000041.fasta'
+    REF_SEQ = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/genomes/loci_ref_sequences/fasta/Cellulose_locus_8genes_NZ_CAPB01000041.fasta'
 
      # collect_fasta_files(
-     #    '/Users/josediogomoura/Documents/BioFago/BioFago/data/all_genomes_erwinia_complete/fasta/ncbi_dataset/data',
-     #    '/Users/josediogomoura/Documents/BioFago/BioFago/data/all_genomes_erwinia_complete/fasta/ncbi_dataset/all_fasta')
+     #    '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/all_genomes_erwinia_complete/fasta/ncbi_dataset/reference_crispr',
+     #    '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/all_genomes_erwinia_complete/fasta/ncbi_dataset/all_fasta')
 
-    GENOMES_FOLDER = '/Users/josediogomoura/Documents/BioFago/BioFago/data/all_genomes_erwinia_complete/fasta/ncbi_dataset/all_fasta'
+    GENOMES_FOLDER = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/all_genomes_erwinia_complete/fasta/ncbi_dataset/all_fasta'
     #
-    DB_FOLDER = '/Users/josediogomoura/Documents/BioFago/BioFago/data/BLAST/Cellulose_locus_8genes_NZ_CAPB01000041/all_genomes_complete'
-    RESULTS_FOLDER = '/Users/josediogomoura/Documents/BioFago/BioFago/data/BLAST/Cellulose_locus_8genes_NZ_CAPB01000041/all_genomes_complete/results'
+    DB_FOLDER = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/BLAST/Cellulose_locus_8genes_NZ_CAPB01000041/all_genomes_complete'
+    RESULTS_FOLDER = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/BLAST/Cellulose_locus_8genes_NZ_CAPB01000041/all_genomes_complete/results'
 
     # Initialize the BlastRunner
     blast_runner = BlastRunner(REF_SEQ, GENOMES_FOLDER, DB_FOLDER, RESULTS_FOLDER)
@@ -290,7 +290,7 @@ def main():
     # PART 2:
     #
     directory_path = '/Users/josediogomoura/Documents/BioFago/BioFago/data/BLAST/Cellulose_locus_8genes_NZ_CAPB01000041/all_genomes_complete/results'
-    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/BLAST/Cellulose_locus_8genes_NZ_CAPB01000041/all_genomes_complete/csv_folder/results_blast.csv_results'
+    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/BLAST/Cellulose_locus_8genes_NZ_CAPB01000041/all_genomes_complete/csv_folder/results_blast.csv_results'
 
     # Create an instance of the class
     compiler = BlastResultsCompiler(directory_path)
@@ -302,18 +302,18 @@ def main():
 def main2():
     # Initialize the class with paths to your reference GenBank file, genomes folder, database folder, and results folder
     # locus_identifier = LocusIdentifier(
-    #     ref_genbank="/Users/josediogomoura/Documents/BioFago/BioFago/data/genomes/loci_ref_sequences/Capsule_locus_12genes_X77921.gb",
-    #     genomes_folder="/Users/josediogomoura/Documents/BioFago/BioFago/data/genomes_erwinia_amylovora",
-    #     db_folder="/Users/josediogomoura/Documents/BioFago/BioFago/data/flanking_genes/db",
-    #     results_folder="/Users/josediogomoura/Documents/BioFago/BioFago/data/flanking_genes/results")
+    #     ref_genbank="/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/genomes/loci_ref_sequences/Capsule_locus_12genes_X77921.gb",
+    #     genomes_folder="/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/genomes_erwinia_amylovora",
+    #     db_folder="/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/flanking_genes/db",
+    #     results_folder="/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/flanking_genes/results")
     # # Extract flanking genes and convert them to FASTA
     # locus_identifier.extract_flanking_genes()
     # # Run BLAST for the flanking genes
     # locus_identifier.run_blast_for_flanking_genes()
 
-    processor = BlastResultProcessor('/Users/josediogomoura/Documents/BioFago/BioFago/data/flanking_genes/results/amsG',
-                                     '/Users/josediogomoura/Documents/BioFago/BioFago/data/flanking_genes/results/amsL',
-                                     '/Users/josediogomoura/Documents/BioFago/BioFago/data/extracted_sequences_erw_amy/flanked/capsule/output.csv_results')
+    processor = BlastResultProcessor('/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/flanking_genes/results/amsG',
+                                     '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/flanking_genes/results/amsL',
+                                     '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/extracted_sequences_erw_amy/flanked/capsule/output.csv_results')
     processor.process_results()
 
 

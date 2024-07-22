@@ -31,11 +31,11 @@ def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_
     prokka_command = [
         'docker', 'run', '--rm',
         '--platform', 'linux/amd64',
-        '-v', f'{Path(fasta_file).parent}:/data',
+        '-v', f'{Path(fasta_file).parent}:/reference_crispr',
         '-v', f'{output_path}:/output',
         '-v', f'{custom_db_path}:/custom_db/sequence.gb',
         'staphb/prokka:latest',
-        'prokka', f'/data/{Path(fasta_file).name}', '-o', '/output', '--locustag', locus_tag_prefix
+        'prokka', f'/reference_crispr/{Path(fasta_file).name}', '-o', '/output', '--locustag', locus_tag_prefix
     ]
 
     # Add custom database option if provided
@@ -57,9 +57,9 @@ def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_
 
 def main():
     # Define the genomes and output directories
-    fasta_file = '/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/cellulose/test_1/extracted_region/PRR1_INIAV.fasta'
+    fasta_file = '/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/cellulose/test_1/extracted_region/genomes.fasta'
 
-    base_output_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/cellulose/test_1/prokka'
+    base_output_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/assign_types/cellulose/test_1/prokka'
     custom_db_path = '/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/fully_gb_database/cellulose/curated_cellulose.gb'
     locus_tag_prefix = 'PREFIX'
 

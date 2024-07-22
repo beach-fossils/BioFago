@@ -1,0 +1,4 @@
+genomes_folder: '/Users/josediogomoura/Documents/BioFago/BioFago/tests/data/new_genomes'
+keep_sequence_loci: true
+threshold_species: 0.95
+log_level: 'INFO'

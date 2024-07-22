@@ -198,18 +198,18 @@ def move_files(src_folder, dest_folder, file_type=".fna"):
 
 def main_move():
     # to move files!
-    move_files("/Users/josediogomoura/Documents/BioFago/BioFago/data/genomesAllErwinia/ncbi_dataset/ncbi_dataset/data",
-               "/Users/josediogomoura/Documents/BioFago/BioFago/data/genomesAllErwinia/ncbi_dataset/ncbi_dataset/fasta",
+    move_files("/Users/josediogomoura/Documents/BioFago/BioFago/data/genomesAllErwinia/ncbi_dataset/ncbi_dataset/reference_crispr",
+               "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/genomesAllErwinia/ncbi_dataset/ncbi_dataset/fasta",
                file_type=".fna")
 
 
 def main():
     # Define paths and parameters
-    #genomes_folder_path = "/Volumes/Crucial_X9/BioFago/data/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/fasta_files"
-    db_folder_path = "/data/OtherSpecies/Erwinia_billingiae/srl/db_folder"
-    results_folder_path = "/data/OtherSpecies/Erwinia_billingiae/srl/blast_results"
-    # ref_seq_gb_path = "/Users/josediogomoura/Documents/BioFago/BioFago/data/ref_sequences/Capsule_locus_12genes_X77921.gb"
-    extracted_genes_fasta = '/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/srl/flank_genes/flank_genes.fasta'
+    #genomes_folder_path = "/Volumes/Crucial_X9/BioFago/reference_crispr/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/fasta_files"
+    db_folder_path = "/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/db_folder"
+    results_folder_path = "/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/blast_results"
+    # ref_seq_gb_path = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/ref_sequences/Capsule_locus_12genes_X77921.gb"
+    extracted_genes_fasta = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/flank_genes/flank_genes.fasta'
 
     # Ensure output folders exist
     Path(db_folder_path).mkdir(parents=True, exist_ok=True)
@@ -223,8 +223,8 @@ def main():
 
     # Collect all .fna genome files from subdirectories
     # Now you can use it like this
-    src_folder = "/data/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/data"
-    dest_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/fasta"
+    src_folder = "/reference_crispr/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/reference_crispr"
+    dest_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/fasta"
     move_files(src_folder, dest_folder)
 
     # # Assuming BlastRunner can take a list of genome files
@@ -240,15 +240,15 @@ def main():
     gene_blast_runner.run_blast_on_all_genomes()
 
     # Step 3: Compile BLAST results into a CSV
-    blast_results_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/srl/blast_results'
-    genomes_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/fasta"
-    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/data/OtherSpecies/Erwinia_billingiae/srl/blast_csv/compiled_results.csv'
+    blast_results_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/blast_results'
+    genomes_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/fasta"
+    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/blast_csv/compiled_results.csv'
     log_file = os.path.join(os.path.dirname(output_csv), 'post_blast_output.log')
     #
     post_blast = PostBlastOutput(blast_results_folder, genomes_folder, output_csv, log_file)
     post_blast.compile_blast_results_to_csv()  # Compiles BLAST results into a CSV
     #
-    extracted_path = "/data/OtherSpecies/Erwinia_billingiae/srl/extracted_sequences"
+    extracted_path = "/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/extracted_sequences"
     post_blast.extract_regions_from_genomes_v2(extracted_path)
 
     logging.info("Workflow completed successfully.")
