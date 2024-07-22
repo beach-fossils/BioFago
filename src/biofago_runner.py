@@ -112,7 +112,14 @@ def cleanup_individual_csv_files(species_finder_path: Path, output_csv: Path) ->
 
 
 if __name__ == '__main__':
-    config = Config('/Users/josediogomoura/Documents/BioFago/BioFago/config.yaml')
+    # Dynamically determine the path to the configuration file one level above
+    config_path = Path(__file__).resolve().parent.parent / 'config.yaml'
+    logging.info(f"Reading configuration from: {config_path}")
+    
+    # Ensure the config file exists
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+      
     log_file = Path(config.output_folder) / "process.log"
     setup_logging(log_file, config.log_level)
 
