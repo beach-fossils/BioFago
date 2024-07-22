@@ -49,6 +49,7 @@ BioFago is a comprehensive genomic analysis tool designed for processing and ana
 
 
 5. Install Docker:
+
 Follow the [official Docker installation guide](https://docs.docker.com/get-docker/) for your operating system.
 
 ## Configuration
