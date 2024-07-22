@@ -43,8 +43,8 @@ BioFago is a comprehensive genomic analysis tool designed for processing and ana
    Note: The script requires sudo privileges on Linux systems and Homebrew on macOS. If you encounter any issues, please refer to the [BLAST manual installation instructions](https://www.ncbi.nlm.nih.gov/books/NBK279671/).
    
    ```bash
-  chmod +x external/blast/install_blast.sh
-  ./external/blast/install_blast.sh
+     chmod +x external/blast/install_blast.sh
+     ./external/blast/install_blast.sh
    ```        
 
 
