@@ -27,25 +27,31 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 2. Set up a Python virtual environment (optional but recommended):
 
    # Create a virtual environment named 'biofago_env'
+   ```bash
    python -m venv biofago_env
+   ```
 
    # Activate the virtual environment
    
    ## On Windows:
+   ```bash
    biofago_env\Scripts\activate
+   ```
 
    ## On Unix or MacOS:
+   ```
    source biofago_env/bin/activate
+   ```
 
    # Your command prompt should now show (biofago_env), indicating it's active
    
-3. Install the required Python packages:
+4. Install the required Python packages:
     
     ```bash
    pip install -r requirements.txt
     ```
    
-4. Install BLAST:
+5. Install BLAST:
 
    
    This script will check if BLAST is already installed and at the correct version. If not, it will attempt to install or update BLAST.
@@ -58,7 +64,7 @@ BioFago provides researchers and plant pathologists with a powerful platform for
    ```        
 
 
-5. Install Docker:
+6. Install Docker:
 
 Follow the [official Docker installation guide](https://docs.docker.com/get-docker/) for your operating system.
 
