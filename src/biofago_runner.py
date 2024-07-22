@@ -6,12 +6,12 @@ from typing import List, Dict
 
 import pandas as pd
 
-from src.extract_annotate_assign import extract_annotate_assign
-from src.utils.folder_csv_manager import (create_individual_folders, run_species_metrics_for_all,
+from extract_annotate_assign import extract_annotate_assign
+from utils.folder_csv_manager import (create_individual_folders, run_species_metrics_for_all,
                                           create_species_finder_folder, cleanup_unwanted_species_folders)
-from src.utils.genome_processing import process_genome, write_results_to_csv, cleanup_analysis_folders, keep_loci_files
-from src.utils.logging_config import setup_logging
-from src.utils.config import Config
+from utils.genome_processing import process_genome, write_results_to_csv, cleanup_analysis_folders, keep_loci_files
+from utils.logging_config import setup_logging
+from utils.config import Config
 
 
 def run_species_and_types_finder(genomes_folder: Path, threshold_species: float = 0.95,
