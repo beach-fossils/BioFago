@@ -17,11 +17,10 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 
 ## Installation
 
-1. Clone the repository:
-
+1. Clone the repository (dev branch):
    ```bash
-   git clone https://github.com/yourusername/biofago_tool.git
-   cd biofago_tool
+   git clone -b dev https://github.com/beach-fossils/BioFago.git
+   cd BioFago
    ```
 
 2. Set up a Python virtual environment (optional but recommended):
@@ -68,24 +67,55 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 
 Follow the [official Docker installation guide](https://docs.docker.com/get-docker/) for your operating system.
 
+
 ## Configuration
 
-1. Copy the example configuration file:
+1. Edit `config.yaml` to match your environment and requirements:
 
-   ```bash
-   cp config.yaml.example config.yaml
-   ```
-
-2. Edit config.yaml to match your environment and requirements:
    ```yaml
-   genomes_folder: "/path/to/your/genomes/folder"
-   keep_sequence_loci: false
-   threshold_species: 0.95
-   log_level: "INFO"
-   ```
+   genomes_folder: "/path/to/your/genomes/folder"  # Mandatory: specify the folder containing your genome files
+   keep_sequence_loci: false  # Optional: set to true to retain sequences for each analyzed locus
+   threshold_species: 0.95  # Optional: ANI threshold for species assignment using Pyani
+   log_level: "INFO"  # Optional: set logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+   
+
+*Note: The output folder is automatically created at the same level as the `genomes_folder`. It is named `species_finder`.*
+
 
 ## Usage
 
    ```bash
   python src/biofago_runner.py
    ```
+
+This command will process all genomes in the specified genomes_folder and output results to the automatically created `species_finder` folder.
+
+### Output Structure
+After running the tool, you can expect the following output structure:
+```
+parent_folder/
+│
+├── genomes_folder/
+│   ├── genome1.fasta
+│   ├── genome2.fasta
+│
+└── species_finder/
+    ├── all_results.csv
+```
+
+### Example Output
+
+For a comprehensive example of the analysis results, you can view a sample `all_results.csv` file in our GitHub repository:
+
+[Example all_results.csv](https://github.com/beach-fossils/BioFago/blob/dev/examples/all_results.csv)
+
+This example file demonstrates the structure and content of the BioFago analysis output, including:
+
+- Genome statistics (e.g., contig count, N50, GC content)
+- Species identification and ANI scores
+- Plasmid detection results
+- Streptomycin resistance gene information
+- CRISPR spacer counts and genotypes
+- Locus typing results for capsule, cellulose, LPS, and sorbitol loci
+
+Reviewing this example can help you understand the type and format of data produced by the BioFago tool.
