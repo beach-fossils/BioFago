@@ -6,13 +6,13 @@ from typing import List, Optional
 
 import pandas as pd
 
-from src.assigning_types.AssignTypes import AssignTypes
-from src.utils.extract_with_flank_genes import extract_with_flank_genes
-from src.utils.get_prokka_faa_file import get_prokka_faa_file
-from src.utils.prokka_docker import run_prokka_docker
-from src.assigning_types.Database import BlastProteinv2, TypeAnalysis
-from src.database.BlastRunner import BlastRunner
-from src.database.FlankGenesForBlast import PostBlastOutput
+from assigning_types.AssignTypes import AssignTypes
+from utils.extract_with_flank_genes import extract_with_flank_genes
+from utils.get_prokka_faa_file import get_prokka_faa_file
+from utils.prokka_docker import run_prokka_docker
+from assigning_types.Database import BlastProteinv2, TypeAnalysis
+from database.BlastRunner import BlastRunner
+from database.FlankGenesForBlast import PostBlastOutput
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
