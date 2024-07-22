@@ -93,7 +93,7 @@ This command will process all genomes in the specified genomes_folder and output
 
 ### Output Structure
 After running the tool, you can expect the following output structure:
-`
+```
 parent_folder/
 │
 ├── genomes_folder/
@@ -102,7 +102,7 @@ parent_folder/
 │
 └── species_finder/
     ├── all_results.csv
-`
+```
 
 ### Example Output
 
