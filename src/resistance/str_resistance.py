@@ -6,8 +6,8 @@ import pandas as pd
 from typing import List, Dict
 import tempfile
 import os
-from src.utils.get_prokka_faa_file import get_prokka_faa_file
-from src.utils.prokka_docker import run_prokka_docker
+from utils.get_prokka_faa_file import get_prokka_faa_file
+from utils.prokka_docker import run_prokka_docker
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
