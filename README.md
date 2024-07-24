@@ -98,7 +98,7 @@ parent_folder/
 ├── genomes_folder/
 │   ├── genome1.fasta
 │   ├── genome2.fasta
-    ...
+│   ...
 │
 └── species_finder/
     ├── all_results.csv
