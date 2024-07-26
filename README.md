@@ -11,7 +11,7 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.9+
 - Docker
 - BLAST 2.15.0+
 
