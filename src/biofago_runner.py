@@ -112,21 +112,28 @@ def cleanup_individual_csv_files(species_finder_path: Path, output_csv: Path) ->
 
 
 if __name__ == '__main__':
-    # Dynamically determine the path to the configuration file one level above
-    config_path = Path(__file__).resolve().parent.parent / 'config.yaml'
-    logging.info(f"Reading configuration from: {config_path}")
-    
-    # Ensure the config file exists
-    if not config_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
-      
-    log_file = Path(config.output_folder) / "process.log"
-    setup_logging(log_file, config.log_level)
+    try:
+        # Dynamically determine the path to the configuration file
+        config_path = Path(__file__).resolve().parent.parent / 'config.yaml'
+        logging.info(f"Reading configuration from: {config_path}")
 
-    genomes_folder = Path(config.genomes_folder)
-    logging.info(f"Starting analysis with genomes folder: {genomes_folder}")
+        # Create Config instance
+        config = Config(str(config_path))
 
-    run_species_and_types_finder(genomes_folder,
-                                 threshold_species=config.threshold_species,
-                                 keep_sequence_loci=config.keep_sequence_loci)
+        # Setup logging
+        log_file = Path(config.output_folder) / "process.log" if config.output_folder else Path("process.log")
+        setup_logging(log_file, config.log_level)
+
+        genomes_folder = Path(config.genomes_folder)
+        logging.info(f"Starting analysis with genomes folder: {genomes_folder}")
+
+        run_species_and_types_finder(genomes_folder,
+                                     threshold_species=config.threshold_species,
+                                     keep_sequence_loci=config.keep_sequence_loci)
+    except FileNotFoundError as e:
+        print(f"Configuration file error: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        sys.exit(1)
 
