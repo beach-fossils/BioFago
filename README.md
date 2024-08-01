@@ -11,8 +11,8 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 
 ## Prerequisites
 
-- Python 3.8+
-- Docker
+- Python 3.9+
+- Docker 26.0.0
 - BLAST 2.15.0+
 
 ## Installation
@@ -98,6 +98,7 @@ parent_folder/
 ├── genomes_folder/
 │   ├── genome1.fasta
 │   ├── genome2.fasta
+│   ...
 │
 └── species_finder/
     ├── all_results.csv
