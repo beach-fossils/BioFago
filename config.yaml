@@ -1,4 +1,5 @@
-genomes_folder: 'Path/To/Your/Genomes'
+genomes_folder: '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/genomes'
 keep_sequence_loci: true
 threshold_species: 0.95
 log_level: 'INFO'
+

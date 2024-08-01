@@ -339,12 +339,12 @@ if __name__ == '__main__':
 
     CRRFinder_folder = output_folder + '/CRR_finder'
     # #
-    # try:
-    #     for genome_file in Path(genomes_folder).glob('*.fasta'):
-    #         genome_fasta = genome_file
-    #         crr_finder = CRRFinder(genome_fasta, output_folder)
-    #         crr_finder.analyze_genome()
-    # except Exception as e:
-    #     logging.error(f"An error occurred during the analysis: {e}")
-    #     raise
+    try:
+        for genome_file in Path(genomes_folder).glob('*.fasta'):
+            genome_fasta = genome_file
+            crr_finder = CRRFinder(genome_fasta, output_folder)
+            crr_finder.analyze_genome()
+    except Exception as e:
+        logging.error(f"An error occurred during the analysis: {e}")
+        raise
     process_directory(CRRFinder_folder)

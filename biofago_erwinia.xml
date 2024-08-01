@@ -1,0 +1,94 @@
+<tool id="biofago_erwinia" name="BioFago Erwinia Analysis" version="0.1.0">
+    <description>Analyze Erwinia genomes for various genetic elements</description>
+    <requirements>
+        <requirement type="package" version="3.9">python</requirement>
+        <requirement type="package" version="1.26.4">numpy</requirement>
+        <requirement type="package" version="2.2.0">pandas</requirement>
+        <requirement type="package" version="3.8.2">matplotlib</requirement>
+        <requirement type="package" version="0.13.2">seaborn</requirement>
+        <requirement type="package" version="1.12.0">scipy</requirement>
+        <requirement type="package" version="1.4.0">scikit-learn</requirement>
+        <requirement type="package" version="1.83">biopython</requirement>
+        <requirement type="package" version="4.66.1">tqdm</requirement>
+        <requirement type="package" version="5.20.0">plotly</requirement>
+        <requirement type="package" version="3.1.2">openpyxl</requirement>
+        <requirement type="package" version="2.31.0">requests</requirement>
+        <requirement type="package" version="1.3.2">joblib</requirement>
+        <requirement type="package" version="6.0.1">pyyaml</requirement>
+
+        <container type="docker">staphb/prokka:latest</container>
+        <container type="docker">leightonpritchard/average_nucleotide_identity:v0.2.9</container>
+
+    </requirements>
+
+    <command detect_errors="exit_code"><![CDATA[
+        mkdir -p genomes &&
+        #for $genome in $genomes_folder
+            ln -s '$genome' 'genomes/${genome.element_identifier}' &&
+        #end for
+        python '$__tool_directory__/src/biofago_runner.py'
+        --genomes_folder 'genomes'
+        --threshold_species '$threshold_species'
+        $keep_sequence_loci
+        --log_level '$log_level'
+        > '$output'
+        2>&1 ;
+        echo "Exit code: $?" >> '$output'
+    ]]></command>
+
+    <inputs>
+    <param name="genomes_folder" type="data_collection" collection_type="list" format="fasta" label="Input genomes" help="Select a collection of genome files in FASTA format"/>
+    <param name="threshold_species" type="float" value="0.95" label="ANI threshold for species assignment" help="Threshold for Average Nucleotide Identity"/>
+    <param name="keep_sequence_loci" type="boolean" truevalue="--keep_sequence_loci" falsevalue="" checked="false" label="Keep sequence loci" help="If checked, sequence loci will be kept"/>
+    <param name="log_level" type="select" label="Logging level">
+        <option value="INFO" selected="true">INFO</option>
+        <option value="DEBUG">DEBUG</option>
+        <option value="WARNING">WARNING</option>
+        <option value="ERROR">ERROR</option>
+        <option value="CRITICAL">CRITICAL</option>
+    </param>
+    </inputs>
+    <outputs>
+        <data name="output" format="tabular" label="${tool.name} on ${on_string}: Results"/>
+    </outputs>
+    <tests>
+        <test>
+            <param name="genomes_folder">
+                <collection type="list">
+                    <element name="PRR1_INIAV" value="genomes/PRR1_INIAV.fasta" />
+                </collection>
+            </param>
+            <param name="threshold_species" value="0.95" />
+            <param name="keep_sequence_loci" value="false" />
+            <param name="log_level" value="INFO" />
+            <output name="output" file="expected_output.csv" compare="re_match" />
+        </test>
+    </tests>
+
+    <help><![CDATA[
+        This tool analyzes Erwinia genomes for various genetic elements including plasmids, CRISPR systems, and antibiotic resistance genes.
+
+        **Inputs**
+
+        * A collection of genome files in FASTA format
+        * ANI threshold for species assignment
+        * Option to keep sequence loci
+        * Logging level
+
+        **Outputs**
+
+        * A CSV file containing analysis results for all input genomes
+    ]]></help>
+    <citations>
+        <citation type="bibtex">
+        @misc{BioFago,
+          author = {Your Name},
+          title = {BioFago: A comprehensive genomic analysis tool for Erwinia amylovora},
+          year = {2024},
+          publisher = {GitHub},
+          journal = {GitHub repository},
+          url = {https://github.com/your_username/BioFago}
+        }
+        </citation>
+    </citations>
+</tool>
