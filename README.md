@@ -44,6 +44,24 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 
    ##### Your command prompt should now show (biofago_env), indicating it's active
    
+
+3. Using a Conda environment (alternative method)
+
+
+   #### Create a Conda environment named 'biofago_env'
+   ```bash
+   conda create -n biofago_env python=3.9
+   ```
+
+   #### Activate the Conda environment
+   ```bash
+   conda activate biofago_env
+   ```
+   
+   ##### Your command prompt should now show (biofago_env), indicating it's active
+
+
+   
 4. Install the required Python packages:
     
     ```bash
