@@ -12,7 +12,7 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 ## Prerequisites
 
 - Python 3.9+
-- Docker 26.0.0
+- Docker 26.0.0 (with the required images pulled)
 - BLAST 2.15.0+
 
 ## Installation
@@ -44,6 +44,24 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 
    ##### Your command prompt should now show (biofago_env), indicating it's active
    
+
+3. Using a Conda environment (alternative method)
+
+
+   #### Create a Conda environment named 'biofago_env'
+   ```bash
+   conda create -n biofago_env python=3.9
+   ```
+
+   #### Activate the Conda environment
+   ```bash
+   conda activate biofago_env
+   ```
+   
+   ##### Your command prompt should now show (biofago_env), indicating it's active
+
+
+   
 4. Install the required Python packages:
     
     ```bash
@@ -66,6 +84,23 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 6. Install Docker:
 
 Follow the [official Docker installation guide](https://docs.docker.com/get-docker/) for your operating system.
+
+
+
+## Docker Images
+
+The development made until now relies on two Docker images for some of its functionality. Before running the tool, make sure to pull these images:
+
+1. Prokka (for genome annotation):
+   ```bash
+   docker pull staphb/prokka:latest
+   ```
+
+2. Average Nucleotide Identity (ANI) calculator:
+   ```bash
+   docker pull leightonpritchard/average_nucleotide_identity:v0.2.9
+   ```
+
 
 
 ## Configuration
