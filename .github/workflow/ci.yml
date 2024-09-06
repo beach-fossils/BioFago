@@ -1,34 +1,44 @@
-name: Python CI
+name: BioFago CI
 
 on:
   push:
-    branches:
-      - main
-      - dev
+    branches: [ main, dev ]
   pull_request:
-    branches:
-      - main
-      - dev
+    branches: [ main, dev ]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up Python 3.10
+    - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: 3.10
+        python-version: '3.9'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run unittests
+    - name: Install BLAST
       run: |
-        python -m unittest discover -s tests -p 'test_*.py'
+        chmod +x external/blast/install_blast.sh
+        sudo ./external/blast/install_blast.sh
+
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v1
+
+    - name: Pull Docker images
+      run: |
+        docker pull staphb/prokka:latest
+        docker pull leightonpritchard/average_nucleotide_identity:v0.2.9
+
+    - name: Run unit tests
+      run: python -m unittest discover tests/unit
+
+    - name: Run integration tests
+      run: python -m unittest discover tests/integration
     
