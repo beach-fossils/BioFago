@@ -9,6 +9,8 @@ import csv
 import logging
 import tempfile
 from typing import Dict, List, Tuple, Any
+from collections import Counter
+
 
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent
@@ -100,9 +102,9 @@ class CRRFinder:
             raise
 
     def _parse_blast_results(self) -> Tuple[Dict[str, int], List[List[str]]]:
-        """Parse BLAST results and determine the presence of each spacer."""
         presence_matrix = {spacer_id: 0 for spacer_id in self.spacers.keys()}
         blast_results = []
+        spacer_counter = Counter()
 
         try:
             with open(self.blast_output, 'r') as infile:
@@ -118,8 +120,7 @@ class CRRFinder:
                         logging.info(
                             f"Spacer {spacer_id}: pident={pident}, length={length}, spacer_length={spacer_length}, coverage={coverage}")
                         if pident >= self.IDENTITY_THRESHOLD and coverage >= self.COVERAGE_THRESHOLD:
-                            presence_matrix[spacer_id] = 1
-                            self.total_spacers_found += 1
+                            spacer_counter[spacer_id] += 1
                         else:
                             logging.info(
                                 f"Spacer {spacer_id} did not meet thresholds: pident={pident}, coverage={coverage}")
@@ -128,6 +129,11 @@ class CRRFinder:
         except csv.Error as e:
             logging.error(f"Error parsing BLAST results: {e}")
 
+        # Update presence_matrix based on spacer_counter
+        for spacer_id, count in spacer_counter.items():
+            presence_matrix[spacer_id] = count
+
+        self.total_spacers_found = sum(spacer_counter.values())
         return presence_matrix, blast_results
 
     def _save_presence_matrix(self, presence_matrix: Dict[str, int], output_csv: Path) -> None:
@@ -150,34 +156,35 @@ class CRRFinder:
             logging.error(f"Error saving BLAST results to {output_csv}: {e}")
 
     def _identify_groups(self, presence_matrix: Dict[str, int], crr_type: str) -> Dict[str, Dict]:
-        """Identify the presence of groups based on the presence matrix."""
         identified_groups = {}
         if crr_type not in self.groups:
             logging.warning(f"{crr_type} not found in the map JSON.")
             return identified_groups
 
-        spacers_in_genome = [spacer for spacer, presence in presence_matrix.items() if presence == 1]
+        spacers_in_genome = [spacer for spacer, count in presence_matrix.items() if count > 0]
 
         for group, subgroups in self.groups[crr_type].items():
             identified_groups[group] = {}
             for subgroup, spacers in subgroups.items():
                 total_spacers = len(spacers)
-                present_spacers = sum(presence_matrix.get(spacer, 0) for spacer in spacers)
+                present_spacers = sum(
+                    min(presence_matrix.get(spacer, 0), spacers.count(spacer)) for spacer in set(spacers))
                 present_percentage = (present_spacers / total_spacers) * 100
 
                 total_spacers_found_percentage = (
                                                              present_spacers / self.total_spacers_found) * 100 if self.total_spacers_found > 0 else 0
 
-                spacers_in_subgroup = [spacer for spacer in spacers if presence_matrix.get(spacer, 0) == 1]
-                spacers_in_genome_not_in_subgroup = [spacer for spacer in spacers_in_genome if
-                                                     spacer not in spacers_in_subgroup]
+                spacers_in_subgroup = [spacer for spacer in set(spacers) if
+                                       presence_matrix.get(spacer, 0) >= spacers.count(spacer)]
+                spacers_in_genome_not_in_subgroup = [spacer for spacer in spacers_in_genome if spacer not in spacers]
 
                 identified_groups[group][subgroup] = {
                     'present_percentage': present_percentage,
                     'total_spacers': total_spacers,
                     'present_spacers': present_spacers,
                     'total_spacers_found_in_genome_percentage': total_spacers_found_percentage,
-                    'missing_spacers': [spacer for spacer in spacers if presence_matrix.get(spacer, 0) == 0],
+                    'missing_spacers': [spacer for spacer in set(spacers) if
+                                        presence_matrix.get(spacer, 0) < spacers.count(spacer)],
                     'spacers_in_genome_not_in_subgroup': spacers_in_genome_not_in_subgroup
                 }
 
@@ -333,8 +340,8 @@ class CRRFinder:
 
 
 def main():
-    genome_dir = Path('/Users/josediogomoura/Documents/BioFago/BioFago/data/crispr_test/test_with_all/missing_genomes/GCA_000367565.2_ASM36756v2_genomic')
-    genome_file = genome_dir / f"{genome_dir.name}.fasta"
+    genome_dir = Path('/Users/josediogomoura/Documents/BioFago/BioFago/tests/data/genomes/GCF_000009045.1_ASM904v1_genomic')
+    genome_file = Path("/Users/josediogomoura/Documents/BioFago/BioFago/tests/data/genomes/GCF_000009045.1_ASM904v1_genomic/GCF_000009045.1_ASM904v1_genomic.fasta")
 
     try:
         crr_finder = CRRFinder(genome_file, genome_dir.parent)
