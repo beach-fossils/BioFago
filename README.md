@@ -131,10 +131,18 @@ python biofago_runner.py --genomes_folder /path/to/genomes --keep_sequence_loci
 
 
 ### Using config.yaml
-Alternatively, you can edit config.yaml to set your preferences, then run the tool without arguments:
+Alternatively, you can edit config.yaml to set your preferences:
 
+```yaml
+genomes_folder: '/path/to/genomes'
+keep_sequence_loci: true
+threshold_species: 0.95
+log_level: 'INFO'
+```
+
+and then run the tool without arguments:
 ```bash
-src/biofago_runner.py
+python biofago_runner.py
 ```
 
 *Note_1: Command-line arguments will override the corresponding settings in `config.yaml`.*
