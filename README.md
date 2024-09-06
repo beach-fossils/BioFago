@@ -12,7 +12,7 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 ## Prerequisites
 
 - Python 3.9+
-- Docker 26.0.0
+- Docker 26.0.0 (with the required images pulled)
 - BLAST 2.15.0+
 
 ## Installation
@@ -84,6 +84,23 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 6. Install Docker:
 
 Follow the [official Docker installation guide](https://docs.docker.com/get-docker/) for your operating system.
+
+
+
+## Docker Images
+
+The development made until now relies on two Docker images for some of its functionality. Before running the tool, make sure to pull these images:
+
+1. Prokka (for genome annotation):
+   ```bash
+   docker pull staphb/prokka:latest
+   ```
+
+2. Average Nucleotide Identity (ANI) calculator:
+   ```bash
+   docker pull leightonpritchard/average_nucleotide_identity:v0.2.9
+   ```
+
 
 
 ## Configuration
