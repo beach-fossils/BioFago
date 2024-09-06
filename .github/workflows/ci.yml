@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.9'
 
@@ -28,14 +28,6 @@ jobs:
         chmod +x external/blast/install_blast.sh
         sudo ./external/blast/install_blast.sh
 
-    - name: Set up Docker
-      uses: docker/setup-buildx-action@v2
-
-    - name: Pull Docker images
-      run: |
-        docker pull staphb/prokka:latest
-        docker pull leightonpritchard/average_nucleotide_identity:v0.2.9
-
     - name: Run unit tests
       run: python -m unittest discover tests/unit
 
@@ -48,4 +40,5 @@ jobs:
       run: |
         echo "The workflow failed. Please check the logs for more information."
         exit 1
+    
     
