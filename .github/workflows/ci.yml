@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.9'
 
@@ -29,7 +29,7 @@ jobs:
         sudo ./external/blast/install_blast.sh
 
     - name: Set up Docker
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
 
     - name: Pull Docker images
       run: |
@@ -41,4 +41,11 @@ jobs:
 
     - name: Run integration tests
       run: python -m unittest discover tests/integration
+
+    # Add error handling
+    - name: Check for errors
+      if: failure()
+      run: |
+        echo "The workflow failed. Please check the logs for more information."
+        exit 1
     
