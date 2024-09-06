@@ -107,13 +107,11 @@ The development made until now relies on two Docker images for some of its funct
 
 You can run BioFago_Erwinia using command-line arguments or by editing the `config.yaml` file.
 
+
 ### Using Command-Line Arguments
 
 Run the tool with command-line arguments to override the settings in `config.yaml`:
 
-```bash
-python src/biofago_runner.py --genomes_folder /path/to/your/genomes/folder [OPTIONS]
-```
 
 Available options:
 
@@ -123,7 +121,6 @@ Available options:
 --threshold_species: Set the ANI threshold for species assignment (optional, default: 0.95)
 --log_level: Set logging verbosity (optional, choices: DEBUG, INFO, WARNING, ERROR, CRITICAL)
 ```
-
 
 
 *Example:*
