@@ -115,7 +115,7 @@ Run the tool with command-line arguments to override the settings in `config.yam
 
 Available options:
 
-```bash
+```
 --genomes_folder: Specify the folder containing your genome files (mandatory)
 --keep_sequence_loci: Flag it to retain sequences for each analysed locus, will be save inside each genomes folder (optional)
 --threshold_species: Set the ANI threshold for species assignment (optional, default: 0.95)
