@@ -103,27 +103,50 @@ The development made until now relies on two Docker images for some of its funct
 
 
 
-## Configuration
-
-1. Edit `config.yaml` to match your environment and requirements:
-
-   ```yaml
-   genomes_folder: "/path/to/your/genomes/folder"  # Mandatory: specify the folder containing your genome files
-   keep_sequence_loci: false  # Optional: set to true to retain sequences for each analyzed locus
-   threshold_species: 0.95  # Optional: ANI threshold for species assignment using Pyani
-   log_level: "INFO"  # Optional: set logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-   
-
-*Note: The output folder is automatically created at the same level as the `genomes_folder`. It is named `species_finder`.*
-
-
 ## Usage
 
-   ```bash
-  python src/biofago_runner.py
-   ```
+You can run BioFago_Erwinia using command-line arguments or by editing the `config.yaml` file.
 
-This command will process all genomes in the specified genomes_folder and output results to the automatically created `species_finder` folder.
+### Using Command-Line Arguments
+
+Run the tool with command-line arguments to override the settings in `config.yaml`:
+
+```bash
+python src/biofago_runner.py --genomes_folder /path/to/your/genomes/folder [OPTIONS]
+```
+
+Available options:
+
+```bash
+--genomes_folder: Specify the folder containing your genome files (mandatory)
+--keep_sequence_loci: Flag it to retain sequences for each analysed locus, will be save inside each genomes folder (optional)
+--threshold_species: Set the ANI threshold for species assignment (optional, default: 0.95)
+--log_level: Set logging verbosity (optional, choices: DEBUG, INFO, WARNING, ERROR, CRITICAL)
+```
+
+
+
+*Example:*
+
+```bash
+python biofago_runner.py --genomes_folder /path/to/genomes --keep_sequence_loci
+```
+
+
+### Using config.yaml
+Alternatively, you can edit config.yaml to set your preferences, then run the tool without arguments:
+
+```bash
+src/biofago_runner.py
+```
+
+*Note_1: Command-line arguments will override the corresponding settings in `config.yaml`.*
+
+
+*Note_2: The output folder is automatically created at the same level as the `genomes_folder`. It is named `species_finder`.*
+
+
+
 
 ### Output Structure
 After running the tool, you can expect the following output structure:
