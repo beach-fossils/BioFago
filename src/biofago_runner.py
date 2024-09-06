@@ -151,6 +151,8 @@ def galaxy_runner():
 
     args = parser.parse_args()
 
+    # also add functions to check if the Docker and Blast are available in the env (???)
+
     try:
         genomes_folder = Path(args.genomes_folder)
         if not genomes_folder.exists() or not genomes_folder.is_dir():
