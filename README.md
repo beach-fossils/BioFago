@@ -73,7 +73,7 @@ BioFago provides researchers and plant pathologists with a powerful platform for
    
    This script will check if BLAST is already installed and at the correct version. If not, it will attempt to install or update BLAST.
 
-   Note: The script requires sudo privileges on Linux systems and Homebrew on macOS. If you encounter any issues, please refer to the [BLAST manual installation instructions](https://www.ncbi.nlm.nih.gov/books/NBK279671/).
+   Note: The script requires sudo privileges on Linux systems and Homebrew on macOS. Also, if you are running this on Windows you should use Git Bash or WSL to execute the following commands since Windows CMD or PowerShell does not support `chmod`. If you encounter any issues, please refer to the [BLAST manual installation instructions](https://www.ncbi.nlm.nih.gov/books/NBK279671/).
    
    ```bash
      chmod +x external/blast/install_blast.sh
@@ -89,7 +89,7 @@ Follow the [official Docker installation guide](https://docs.docker.com/get-dock
 
 ## Docker Images
 
-The development made until now relies on two Docker images for some of its functionality. Before running the tool, make sure to pull these images:
+The development that has been made until now relies on two Docker images for some of its functionality. Before running the tool, make sure to pull these images:
 
 1. Prokka (for genome annotation):
    ```bash
