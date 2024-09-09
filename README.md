@@ -17,7 +17,7 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 
 ## Installation
 
-1. Clone the repository (dev branch):
+1. Clone the repository:
    ```bash
    git clone https://github.com/beach-fossils/BioFago.git
    cd BioFago
