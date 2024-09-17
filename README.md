@@ -163,7 +163,7 @@ output_dir/
 
 For a comprehensive example of the analysis results, you can view a sample `all_results.csv` file in our GitHub repository:
 
-[Example all_results.csv](https://github.com/beach-fossils/BioFago/blob/dev/examples/all_results.csv)
+[Example all_results.csv]([https://github.com/beach-fossils/BioFago/blob/dev/examples/all_results.csv](https://github.com/beach-fossils/BioFago/blob/main/test-data/csv/PRR1_INIAV.csv))
 
 This example file demonstrates the structure and content of the BioFago analysis output, including:
 
