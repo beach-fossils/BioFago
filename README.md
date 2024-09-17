@@ -105,69 +105,61 @@ The development that has been made until now relies on two Docker images for som
 
 ## Usage
 
-You can run BioFago_Erwinia using command-line arguments or by editing the `config.yaml` file.
-
+You can run BioFago_Erwinia using command-line arguments.
 
 ### Using Command-Line Arguments
 
-Run the tool with command-line arguments to override the settings in `config.yaml`:
+Run the tool with the following command-line arguments:
+
+
+```bash
+python biofago_runner.py --input <input_path> --output_dir <output_directory> [options]
+```
 
 
 Available options:
 
 ```
---genomes_folder: Specify the folder containing your genome files (mandatory)
---keep_sequence_loci: Flag it to retain sequences for each analysed locus, will be save inside each genomes folder (optional)
+--input: Specify the genome file (.fasta) to be processed as input (mandatory)
+--output_dir: Specify the output directory for results (mandatory)
+--keep_sequence_loci: Flag to retain sequences for each analyzed locus (optional)
 --threshold_species: Set the ANI threshold for species assignment (optional, default: 0.95)
---log_level: Set logging verbosity (optional, choices: DEBUG, INFO, WARNING, ERROR, CRITICAL)
+--log_level: Set logging verbosity (optional, choices: DEBUG, INFO, WARNING, ERROR, CRITICAL, default: INFO)
 ```
 
 
 *Example:*
 
 ```bash
-python biofago_runner.py --genomes_folder /path/to/genomes --keep_sequence_loci
+python biofago_runner.py --input /path/to/genome1.fasta --output_dir /path/to/output --keep_sequence_loci
 ```
 
 
-### Using config.yaml
-Alternatively, you can edit config.yaml to set your preferences:
-
-```yaml
-genomes_folder: '/path/to/genomes'
-keep_sequence_loci: true
-threshold_species: 0.95
-log_level: 'INFO'
-```
-
-and then run the tool without arguments:
-```bash
-python biofago_runner.py
-```
-
-*Note_1: Command-line arguments will override the corresponding settings in `config.yaml`.*
-
-
-*Note_2: The output folder is automatically created at the same level as the `genomes_folder`. It is named `species_finder`.*
-
+*Note: The output folders named `species_finder` and `types_finder` (if --keep_sequence_loci is used) are automatically created in the specified output directory.*
 
 
 
 ### Output Structure
 After running the tool, you can expect the following output structure:
 ```
-parent_folder/
+output_dir/
 │
-├── genomes_folder/
-│   ├── genome1.fasta
-│   ├── genome2.fasta
-│   ...
+├── species_finder/
+│   └── all_results.csv
 │
-└── species_finder/
-    ├── all_results.csv
+├── types_finder/ (if --keep_sequence_loci is used)
+│   └── genome1/
+│       ├── types_capsule/
+│       ├── types_cellulose/
+│       ├── types_lps/
+│       └── types_srl/
+│           ├── PROKKA_[DATE].fna
+│           └── PROKKA_[DATE].gbk
+
+
 ```
 
-### Example Output
+### Example `.csv` output
 
 For a comprehensive example of the analysis results, you can view a sample `all_results.csv` file in our GitHub repository:
 
