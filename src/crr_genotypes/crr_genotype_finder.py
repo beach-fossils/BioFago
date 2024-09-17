@@ -207,7 +207,7 @@ class CRRFinder:
             logging.error(f"Error saving identified groups to {output_json}: {e}")
 
     def analyze_genome(self) -> None:
-        """Perform the full analysis workflow."""
+        """Perform the full analysis workflows."""
         spacer_files = list(SPACERS_FOLDER.glob('*.csv'))
         for spacer_file in tqdm(spacer_files, desc="Processing spacer files"):
             crr_type = spacer_file.stem.split('_')[-1]
