@@ -70,7 +70,6 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
         fasta_stats = FastaStatistics(single_sequence_path)
         stats = fasta_stats.generate_assembly_statistics()
         df_stats = pd.DataFrame([stats])
-        df_stats.to_csv(paths['output_stats_path'], index=False)
 
         # Prepare for ANI analysis
         ani_executor = OptimizedLocalANIExecutor(single_sequence_path, REFERENCE_GENOMES, paths['ani_tab_file'],
@@ -86,10 +85,9 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
             else:
                 species = "Unknown"
                 ani_value = 0.0
-                logging.info(
-                    f"No match found above threshold. Best match: {ani_executor.best_match['species']} with ANI {ani_executor.best_match['ani']:.4f}")
+                logging.info(f"No match found above threshold. Best match: {ani_executor.best_match['species']} with ANI {ani_executor.best_match['ani']:.4f}")
 
-            # Add species information to the final DataFrame
+            # Add species information to the DataFrame
             df_stats['Species'] = species
             df_stats['ANI'] = ani_value
         else:
@@ -97,26 +95,26 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
             df_stats['Species'] = 'Unknown'
             df_stats['ANI'] = 0.0
 
+        # Ensure the output file doesn't exist before writing
+        if paths['species_output_file'].exists():
+            paths['species_output_file'].unlink()
+
         df_stats.to_csv(paths['species_output_file'], index=False)
         logging.info(f"Results saved to {paths['species_output_file']}")
 
     except Exception as e:
         logging.error(f"Error in run_species_metrics_finder: {e}")
-        # Instead of raising the exception, we'll set the species as 'Unknown'
-        df_stats['Species'] = 'Unknown'
-        df_stats['ANI'] = 0.0
+        df_stats = pd.DataFrame([{
+            'Species': 'Unknown',
+            'ANI': 0.0,
+            'Error': str(e)
+        }])
         df_stats.to_csv(paths['species_output_file'], index=False)
         logging.info(f"Results saved to {paths['species_output_file']} with Unknown species due to error")
 
     finally:
         cleanup_files(paths)
         remove_empty_directories(paths)
-        try:
-            if not any(paths['results_dir'].iterdir()):
-                paths['results_dir'].rmdir()
-            logging.info("Empty directories deleted.")
-        except Exception as e:
-            logging.warning(f"Error deleting results directory: {e}")
 
 
 if __name__ == '__main__':

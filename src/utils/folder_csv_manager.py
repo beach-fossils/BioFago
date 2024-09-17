@@ -9,6 +9,19 @@ import time
 
 from metrics_species_caller import new_run_species_metrics_finder
 
+def create_species_finder_folder(genomes_folder_path: Path) -> Path:
+    species_finder_path = genomes_folder_path / 'species_finder'
+    species_finder_path.mkdir(exist_ok=True)
+    return species_finder_path
+
+def run_species_metrics_for_all(genomes_folder_path: Path, species_finder_path: Path, threshold_species: float):
+    """Run species metrics finder for all genomes in their individual folders."""
+    for genome_file in genomes_folder_path.glob('*.fasta'):
+        logging.info(f"Processing genome file: {genome_file}")
+        try:
+            new_run_species_metrics_finder(genome_file, species_finder_path, threshold_species)
+        except Exception as e:
+            logging.error(f"Error in new_run_species_metrics_finder for {genome_file}: {e}")
 
 def create_individual_folders(genomes_folder: Path) -> Path:
     """Move each genome to its individual folder, preserving the original file name."""
@@ -19,18 +32,6 @@ def create_individual_folders(genomes_folder: Path) -> Path:
         shutil.move(str(genome_file), str(genome_dir / genome_file.name))
         logging.info(f"Moved {genome_file} to {genome_dir}")
     return genomes_folder_path
-
-
-def run_species_metrics_for_all(genomes_folder_path: Path, species_finder_path: Path, threshold_species: float):
-    """Run species metrics finder for all genomes in their individual folders."""
-    for genome_dir in genomes_folder_path.iterdir():
-        if genome_dir.is_dir():
-            for genome_file in genome_dir.glob('*.fasta'):
-                logging.info(f"Processing genome file: {genome_file}")
-                try:
-                    new_run_species_metrics_finder(genome_file, species_finder_path, threshold_species)
-                except Exception as e:
-                    logging.error(f"Error in new_run_species_metrics_finder for {genome_file}: {e}")
 
 
 def update_species_csv(species_finder_path: Path, genome_name: str, locus_name: str, locus_type: str,
@@ -65,12 +66,6 @@ def update_species_csv_with_results(species_finder_path: Path, genome_name: str,
 #     species_finder_path = genomes_folder_path / 'species_finder'
 #     species_finder_path.mkdir(exist_ok=True)
 #     return species_finder_path
-
-def create_species_finder_folder(genomes_folder_path: Path) -> Path:
-    """Create the species_finder folder inside the base input genome folder."""
-    species_finder_path = genomes_folder_path / 'species_finder'
-    species_finder_path.mkdir(exist_ok=True)
-    return species_finder_path
 
 
 def cleanup_unwanted_species_folders(base_output_path: Path, main_species_finder_path: Path):

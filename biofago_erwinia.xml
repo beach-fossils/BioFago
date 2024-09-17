@@ -1,4 +1,4 @@
-<tool id="biofago_erwinia" name="BioFago Erwinia Analysis" version="0.1.0">
+<tool id="biofago_erwinia" name="BioFago Erwinia Analysis" version="0.1.0" profile="20.05">
     <description>Analyze Erwinia genomes for various genetic elements</description>
     <requirements>
         <requirement type="package" version="3.9">python</requirement>
@@ -10,58 +10,94 @@
         <requirement type="package" version="1.4.0">scikit-learn</requirement>
         <requirement type="package" version="1.83">biopython</requirement>
         <requirement type="package" version="4.66.1">tqdm</requirement>
-        <requirement type="package" version="5.20.0">plotly</requirement>
         <requirement type="package" version="3.1.2">openpyxl</requirement>
         <requirement type="package" version="2.31.0">requests</requirement>
         <requirement type="package" version="1.3.2">joblib</requirement>
         <requirement type="package" version="6.0.1">pyyaml</requirement>
+        <requirement type="package" version="3.0">zip</requirement>
 
         <container type="docker">staphb/prokka:latest</container>
         <container type="docker">leightonpritchard/average_nucleotide_identity:v0.2.9</container>
-
     </requirements>
 
     <command detect_errors="exit_code"><![CDATA[
-        mkdir -p genomes &&
-        #for $genome in $genomes_folder
-            ln -s '$genome' 'genomes/${genome.element_identifier}' &&
-        #end for
-        python '$__tool_directory__/src/biofago_runner.py'
-        --genomes_folder 'genomes'
-        --threshold_species '$threshold_species'
-        $keep_sequence_loci
-        --log_level '$log_level'
-        > '$output'
-        2>&1 ;
-        echo "Exit code: $?" >> '$output'
+    python '$__tool_directory__/biofago_runner.py'
+    --input '$input'
+    --threshold_species '$threshold_species'
+    $keep_sequence_loci
+    --log_level '$log_level'
+    --output_dir .
+    &&
+    mv species_finder/all_results.csv '$output_csv'
+    &&
+    echo "Current directory contents:" 1>&2
+    &&
+    ls -R . 1>&2
+    #if $keep_sequence_loci:
+    &&
+    echo "Attempting to create zip file..." 1>&2
+    &&
+    python '$__tool_directory__/create_zip.py' '.' '$sequence_archive'
+    &&
+    echo "Zip creation attempt finished" 1>&2
+    &&
+    echo "Created zip file: $sequence_archive" 1>&2
+    &&
+    ls -l '$sequence_archive' 1>&2
+    #end if
     ]]></command>
 
     <inputs>
-    <param name="genomes_folder" type="data_collection" collection_type="list" format="fasta" label="Input genomes" help="Select a collection of genome files in FASTA format"/>
-    <param name="threshold_species" type="float" value="0.95" label="ANI threshold for species assignment" help="Threshold for Average Nucleotide Identity"/>
-    <param name="keep_sequence_loci" type="boolean" truevalue="--keep_sequence_loci" falsevalue="" checked="false" label="Keep sequence loci" help="If checked, sequence loci will be kept"/>
-    <param name="log_level" type="select" label="Logging level">
-        <option value="INFO" selected="true">INFO</option>
-        <option value="DEBUG">DEBUG</option>
-        <option value="WARNING">WARNING</option>
-        <option value="ERROR">ERROR</option>
-        <option value="CRITICAL">CRITICAL</option>
-    </param>
+        <param name="input" type="data" format="fasta" label="Input genome file" />
+        <param name="threshold_species" type="float" value="0.95"
+               label="ANI threshold for species assignment"
+               help="Threshold for Average Nucleotide Identity"/>
+        <param name="keep_sequence_loci" type="boolean" truevalue="--keep_sequence_loci" falsevalue=""
+               checked="false" label="Create downloadable sequence archive"
+               help="If checked, a zip file containing sequence loci will be created for download"/>
+        <param name="log_level" type="select" label="Logging level">
+            <option value="INFO" selected="true">INFO</option>
+            <option value="DEBUG">DEBUG</option>
+            <option value="WARNING">WARNING</option>
+            <option value="ERROR">ERROR</option>
+            <option value="CRITICAL">CRITICAL</option>
+        </param>
     </inputs>
+
     <outputs>
-        <data name="output" format="tabular" label="${tool.name} on ${on_string}: Results"/>
+        <data name="output_csv" format="csv" from_work_dir="species_finder/all_results.csv" label="${tool.name} on ${on_string}: Results"/>
+        <data name="sequence_archive" format="zip" label="${tool.name} on ${on_string}: Sequence Archive">
+            <filter>keep_sequence_loci</filter>
+        </data>
     </outputs>
+
     <tests>
-        <test>
-            <param name="genomes_folder">
-                <collection type="list">
-                    <element name="PRR1_INIAV" value="genomes/PRR1_INIAV.fasta" />
-                </collection>
-            </param>
+        <test expect_num_outputs="1">
+            <param name="input" value="genomes/PRR1_INIAV.fasta" ftype="fasta" />
             <param name="threshold_species" value="0.95" />
             <param name="keep_sequence_loci" value="false" />
             <param name="log_level" value="INFO" />
-            <output name="output" file="expected_output.csv" compare="re_match" />
+            <output name="output_csv" file="species_finder/all_results.csv" compare="sim_size" delta="1000" />
+        </test>
+
+        <test expect_num_outputs="2">
+            <param name="input" value="genomes/PRR1_INIAV.fasta" ftype="fasta" />
+            <param name="threshold_species" value="0.95" />
+            <param name="keep_sequence_loci" value="true" />
+            <param name="log_level" value="INFO" />
+            <output name="output_csv" file="species_finder/all_results.csv" compare="sim_size" delta="1000" />
+            <output name="sequence_archive" file="types_finder.zip" compare="sim_size" delta="10000">
+                <assert_contents>
+                    <has_archive_member path="types_finder/.*/types_capsule/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_capsule/PROKKA_.*\.gbk" />
+                    <has_archive_member path="types_finder/.*/types_cellulose/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_cellulose/PROKKA_.*\.gbk" />
+                    <has_archive_member path="types_finder/.*/types_srl/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_srl/PROKKA_.*\.gbk" />
+                    <has_archive_member path="types_finder/.*/types_lps/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_lps/PROKKA_.*\.gbk" />
+                </assert_contents>
+            </output>
         </test>
     </tests>
 
@@ -70,15 +106,29 @@
 
         **Inputs**
 
-        * A collection of genome files in FASTA format
-        * ANI threshold for species assignment
-        * Option to keep sequence loci
-        * Logging level
+        - A genome file in FASTA format
+        - ANI threshold for species assignment
+        - Option to keep sequence loci
+        - Logging level
 
         **Outputs**
 
-        * A CSV file containing analysis results for all input genomes
+        - A CSV file containing analysis results for the input genome
+        - **Sequence Archive**: When "Keep sequence loci" is selected, a zip archive containing the sequences will be available for download. This archive preserves the folder structure and can be downloaded for further analysis outside Galaxy.
+
+        The sequence archive includes the following structure:
+        - types_finder/
+          - [Genome Name]/
+            - types_capsule/
+            - types_cellulose/
+            - types_lps/
+            - types_srl/
+              - PROKKA_[DATE].fna
+              - PROKKA_[DATE].gbk
+
+        **Note**: If the sequence archive creation fails, the tool will continue to run and provide the CSV output. Check the tool's log for any warnings or errors related to the archive creation.
     ]]></help>
+
     <citations>
         <citation type="bibtex">
         @misc{BioFago,
@@ -87,7 +137,7 @@
           year = {2024},
           publisher = {GitHub},
           journal = {GitHub repository},
-          url = {https://github.com/your_username/BioFago}
+          url = {https://github.com/beach-fossils/BioFago}
         }
         </citation>
     </citations>

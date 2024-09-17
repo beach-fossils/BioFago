@@ -16,9 +16,14 @@ REFERENCE_PLASMIDS = project_root / "reference_plasmids"
 
 class PlasmidFinder:
     def __init__(self, plasmid_reference_folder: Path = REFERENCE_PLASMIDS,
-
                  identity_threshold: float = 90.0,
                  coverage_threshold: float = 0.8) -> None:
+
+        if 'REFERENCE_PLASMIDS' not in globals():
+            logging.error("REFERENCE_PLASMIDS is not defined. Please check the configuration.")
+            raise NameError("REFERENCE_PLASMIDS is not defined")
+        self.reference_plasmids = REFERENCE_PLASMIDS
+
         self.plasmid_reference_folder = plasmid_reference_folder
         self.identity_threshold = identity_threshold
         self.coverage_threshold = coverage_threshold
@@ -61,7 +66,7 @@ class PlasmidFinder:
             logger.error(f"Error in creating BLAST database: {e.stderr}")
             raise
 
-    def run_blast_for_genome(self, genome_file: Path) -> None:
+    def run_blast_for_genome(self, genome_file: Path) -> List[str]:
         """Run BLAST for the genome file against the combined plasmid database."""
         self.genome_file = genome_file
         self.output_folder = genome_file.parent.parent / "plasmid_finder" / self.genome_file.stem
@@ -93,12 +98,15 @@ class PlasmidFinder:
             subprocess.run(blast_cmd, check=True, capture_output=True, text=True)
             logger.info(f"BLAST search completed for {self.genome_file} with results saved to {result_file}")
 
-            # Parse results
             self._parse_results(result_file)
+            self._extract_present_plasmids()
         except subprocess.CalledProcessError as e:
             logger.error(f"Error in running BLAST search: {e.stderr}")
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
+
+        logger.info(f"Returning present plasmids: {self.present_plasmids}")
+        return self.present_plasmids  # Return the list of present plasmids
 
     def _parse_results(self, result_file: Path) -> None:
         query_length = self._get_sequence_length(self.genome_file)
@@ -234,9 +242,8 @@ class PlasmidFinder:
         except Exception as e:
             logger.error(f"Error updating CSV file {csv_file}: {e}")
 
+
 # Example usage
 if __name__ == "__main__":
     plasmid_finder = PlasmidFinder()
-    plasmid_finder.process_all_genomes_in_folder(Path("/Users/josediogomoura/Documents/BioFago/BioFago/data/test_plasmid"))
-
-
+    plasmid_finder.process_all_genomes_in_folder(Path("/path/to/your/genomes/folder"))
