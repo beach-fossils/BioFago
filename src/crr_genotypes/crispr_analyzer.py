@@ -11,14 +11,24 @@ import os
 import multiprocessing
 
 class CRISPRAnalyzer:
+    _instances = {}  # Class variable to track instances
+
+    def __new__(cls, input_dir: Path, output_dir: Path, batch_size: int = 20):
+        key = str(input_dir)
+        if key not in cls._instances:
+            cls._instances[key] = super(CRISPRAnalyzer, cls).__new__(cls)
+        return cls._instances[key]
+
     def __init__(self, input_dir: Path, output_dir: Path, batch_size: int = 20):
-        self.input_dir = Path(input_dir)
-        self.output_dir = Path(output_dir) / "CRISPR_finder"
-        self.results_dir = self.output_dir / "Results"
-        self.crr_types = ["CRR1", "CRR2", "CRR4"]
-        self.batch_size = batch_size
-        self.setup_directories()
-        self.setup_logging()
+        if not hasattr(self, '_initialized'):  # Only initialize once
+            self.input_dir = Path(input_dir)
+            self.output_dir = Path(output_dir) / "CRISPR_finder"
+            self.results_dir = self.output_dir / "Results"
+            self.crr_types = ["CRR1", "CRR2", "CRR4"]
+            self.batch_size = batch_size
+            self.setup_directories()
+            self.setup_logging()
+            self._initialized = True
 
     def setup_directories(self):
         if not self.output_dir.exists():

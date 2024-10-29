@@ -1,3 +1,4 @@
+import fcntl
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -17,6 +18,7 @@ from assigning_types.assembly_statistics import FastaStatistics
 
 from utils.clade_assigner import CRISPRCladeClassifier, parse_spacer_counts
 import os
+import contextlib
 
 # Assuming the matrix file is in the project root
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -46,88 +48,108 @@ class GenomeAnalysisResult:
 def setup_logging():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def process_genomes(genome_files: List[Path], clade_classifier: CRISPRCladeClassifier, max_workers: int = 4) -> List[Dict]:
+
+def process_genomes(genome_files: List[Path], clade_classifier: CRISPRCladeClassifier, max_workers: int = 4) -> List[
+    Dict]:
+    processed = set()
     results = []
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_genome = {executor.submit(process_single_genome, genome, clade_classifier): genome for genome in genome_files}
+        future_to_genome = {
+            executor.submit(process_single_genome, genome, clade_classifier): genome
+            for genome in genome_files
+            if genome.stem not in processed
+        }
+
         for future in as_completed(future_to_genome):
             genome = future_to_genome[future]
             try:
                 result = future.result()
                 if result:
                     results.append(result)
+                    processed.add(genome.stem)
             except Exception as e:
                 logging.error(f"Exception occurred while processing {genome}: {str(e)}")
+
     return results
+
+@contextlib.contextmanager
+def genome_lock(genome_file: Path):
+    lock_file = genome_file.with_suffix('.lock')
+    try:
+        with open(lock_file, 'w') as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            yield
+    finally:
+        if lock_file.exists():
+            lock_file.unlink()
 
 
 def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassifier) -> Optional[Dict]:
-    try:
-        logging.info(f"Processing genome file: {genome_file}")
+    with genome_lock(genome_file):
+        try:
+            logging.info(f"Processing genome file: {genome_file}")
 
-        fasta_stats = FastaStatistics(genome_file)
-        stats = fasta_stats.generate_assembly_statistics()
+            fasta_stats = FastaStatistics(genome_file)
+            stats = fasta_stats.generate_assembly_statistics()
 
-        plasmid_finder = PlasmidFinder()
-        present_plasmids = plasmid_finder.run_blast_for_genome(genome_file)
+            plasmid_finder = PlasmidFinder()
+            present_plasmids = plasmid_finder.run_blast_for_genome(genome_file)
 
-        plasmid_info = ', '.join(sorted(present_plasmids)) if present_plasmids else 'None'
-        logging.info(f"Plasmids found for {genome_file.name}: {plasmid_info}")
+            plasmid_info = ', '.join(sorted(present_plasmids)) if present_plasmids else 'None'
+            logging.info(f"Plasmids found for {genome_file.name}: {plasmid_info}")
 
-        str_resistance = StrResistance()
-        str_resistance.run_blast_for_genome(genome_file)
-        str_result = str_resistance.get_results()
+            str_resistance = StrResistance()
+            str_resistance.run_blast_for_genome(genome_file)
+            str_result = str_resistance.get_results()
 
-        virulence_genes = VirulenceGenes()
-        virulence_genes.run_blast_for_genome(genome_file)
-        virulence_result = virulence_genes.get_results()
+            virulence_genes = VirulenceGenes()
+            virulence_genes.run_blast_for_genome(genome_file)
+            virulence_result = virulence_genes.get_results()
 
-        crispr_output_dir = genome_file.parent / "CRISPR_finder"
-        crispr_analyzer = CRISPRAnalyzer(genome_file.parent, crispr_output_dir)
-        crispr_analyzer.run_analysis()
-        crispr_summaries = crispr_analyzer.get_crispr_summary()
-        crispr_info = crispr_summaries.get(genome_file.stem, "CRISPR: No results")
+            crispr_output_dir = genome_file.parent / "CRISPR_finder"
+            crispr_analyzer = CRISPRAnalyzer(genome_file.parent, crispr_output_dir)
+            crispr_analyzer.run_analysis()
+            crispr_summaries = crispr_analyzer.get_crispr_summary()
+            crispr_info = crispr_summaries.get(genome_file.stem, "CRISPR: No results")
 
-        crr_finder = CRRFinder(genome_file, genome_file.parent)
-        crr_finder.analyze_genome()
-        crr_finder.process_directory()
-        crr_info = crr_finder.get_crr_summary()
+            crr_finder = CRRFinder(genome_file, genome_file.parent)
+            crr_finder.analyze_genome()
+            crr_finder.process_directory()
+            crr_info = crr_finder.get_crr_summary()
 
-        # CRISPR clade classification
-        spacer_counts = parse_spacer_counts(crispr_info)
-        clade, score, spacer_score, genotype_score, confidence_level, subgroup = clade_classifier.determine_clade(
-            crr_info, spacer_counts)
+            # CRISPR clade classification
+            spacer_counts = parse_spacer_counts(crispr_info)
+            clade, score, spacer_score, genotype_score, confidence_level, subgroup = clade_classifier.determine_clade(
+                crr_info, spacer_counts)
 
-        result = {
-            'name': stats['name'],
-            'contig_count': stats['contig_count'],
-            'N50_value': stats['N50_value'],
-            'largest_contig': stats['largest_contig'],
-            'largest_contig_size_bp': stats['largest_contig_size_bp'],
-            'total_size_bp': stats['total_size_bp'],
-            'ambiguous_bases': stats['ambiguous_bases'],
-            'GC_content_percent': stats['GC_content_percent'],
-            'present_plasmids': plasmid_info,
-            'streptomycin': str(str_result),
-            'crispr_spacers': str(crispr_info),
-            'crispr_genotype': str(crr_info),
-            'clade': f"{clade} {subgroup}".strip() if clade != "Unknown" else clade,
-            'clade_confidence_score': round(score, 2),
-            'clade_confidence_level': confidence_level,
-            #'clade_spacer_match_score': round(spacer_score, 2),
-            #'clade_genotype_score': round(genotype_score, 2)
-        }
+            result = {
+                'name': stats['name'],
+                'contig_count': stats['contig_count'],
+                'N50_value': stats['N50_value'],
+                'largest_contig': stats['largest_contig'],
+                'largest_contig_size_bp': stats['largest_contig_size_bp'],
+                'total_size_bp': stats['total_size_bp'],
+                'ambiguous_bases': stats['ambiguous_bases'],
+                'GC_content_percent': stats['GC_content_percent'],
+                'present_plasmids': plasmid_info,
+                'streptomycin': str(str_result),
+                'crispr_spacers': str(crispr_info),
+                'crispr_genotype': str(crr_info),
+                'clade': f"{clade} {subgroup}".strip() if clade != "Unknown" else clade,
+                'clade_confidence_score': round(score, 2),
+                'clade_confidence_level': confidence_level,
+            }
 
-        # Process virulence genes
-        for cluster, genes in virulence_result.items():
-            result[f'{cluster}_genes'] = ', '.join(sorted(genes)) if genes else 'None'
+            # Process virulence genes
+            for cluster, genes in virulence_result.items():
+                result[f'{cluster}_genes'] = ', '.join(sorted(genes)) if genes else 'None'
 
+            return result
 
-        return result
-
-    except Exception as e:
-        logging.error(f"Error processing genome {genome_file.name}: {str(e)}")
-        return None
+        except Exception as e:
+            logging.error(f"Error processing genome {genome_file.name}: {str(e)}")
+            return None
 
 def get_locus_info(genome_file: Path, locus_type: str) -> Optional[Tuple[str, str, str]]:
     locus_folder = genome_file.parent / 'types_finder' / genome_file.stem / f'types_{locus_type}'
