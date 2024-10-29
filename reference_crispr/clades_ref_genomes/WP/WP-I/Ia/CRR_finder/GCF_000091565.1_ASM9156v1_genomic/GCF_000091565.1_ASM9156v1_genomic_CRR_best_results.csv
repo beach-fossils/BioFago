@@ -1,4 +1,0 @@
-Genome,CRR Type,Best Group,Best Subgroup,present_percentage,total_spacers,present_spacers,total_spacers_found_in_genome_percentage,missing_spacers,spacers_in_genome_not_in_subgroup,composite_score
-GCF_000091565.1_ASM9156v1_genomic,CRR4,Group Spiraeoideae,alpha,100.0,5,5,100.0,,,100.0
-GCF_000091565.1_ASM9156v1_genomic,CRR2,Group Ia+Ib,a,100.0,33,33,97.06,,2087,98.53
-GCF_000091565.1_ASM9156v1_genomic,CRR1,Group Ia+Ib,A,100.0,34,34,100.0,,,100.0
