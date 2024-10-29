@@ -437,11 +437,11 @@ class TypeAnalysis:
                                   (df['Length Ratio'] >= 0.9) &
                                   (df['Length Ratio'] <= 1.1)).astype(int)
 
-        df['Significantly Different'] = ((df['Best BLAST Identity'] < 99.5) |
-                                         (df['Query Coverage'] < 0.99) |
-                                         (df['Subject Coverage'] < 0.99) |
-                                         (df['Length Ratio'] < 0.95) |
-                                         (df['Length Ratio'] > 1.05)).astype(int)
+        # Flag ANY difference from perfect identity
+        df['Significantly Different'] = ((df['Best BLAST Identity'] < 100) |  # Any difference in identity
+                                         (df['Query Coverage'] < 1.0) |  # Any difference in coverage
+                                         (df['Subject Coverage'] < 1.0) |  # Any difference in coverage
+                                         (df['Length Ratio'] != 1.0)).astype(int)  # Any difference in length
 
         df['Truncated'] = ((df['Best BLAST Identity'] >= 95) &
                            (df['Query Coverage'] < 0.9) &
@@ -670,37 +670,33 @@ class TypeAnalysis:
     #     return 'None'
 
     def determine_type(self, present_genes, truncated_genes, extra_genes, locus_coverage, different_genes):
+        # Perfect - Everything matches exactly
         if not different_genes and present_genes == self.number_of_genes and truncated_genes == 0 and extra_genes == 0 and locus_coverage >= 0.99:
             return 'Perfect'
 
         num_different_genes = len(different_genes)
 
-        if num_different_genes == 0:
-            if locus_coverage >= 0.99:
-                return 'Very High'
-            elif locus_coverage >= 0.95:
-                return 'High'
-        elif num_different_genes == 1:
-            if locus_coverage >= 0.95:
-                return 'High'
-            elif locus_coverage >= 0.90:
-                return 'Good'
-        elif num_different_genes == 2:
-            if locus_coverage >= 0.90:
-                return 'Good'
-            elif locus_coverage >= 0.85:
-                return 'Low'
-        elif num_different_genes == 3:
-            if locus_coverage >= 0.85:
-                return 'Low'
-            else:
-                return 'Very low'
-        else:  # 4 or more different genes
+        # Very High - Almost perfect with minimal differences
+        if num_different_genes <= 2 and locus_coverage >= 0.97 and extra_genes <= 1:
+            return 'Very High'
+
+        # High - Good similarity with some variations
+        if num_different_genes <= 4 and locus_coverage >= 0.95 and extra_genes <= 2:
+            return 'High'
+
+        # Good - Recognizable system with acceptable variations
+        if num_different_genes <= 6 and locus_coverage >= 0.90 and extra_genes <= 3:
+            return 'Good'
+
+        # Low - System present but with significant variations
+        if num_different_genes <= 8 and locus_coverage >= 0.80 and extra_genes <= 4:
+            return 'Low'
+
+        # Very low - System barely recognizable
+        if locus_coverage >= 0.70 or num_different_genes <= 10:  # This condition is fine as is
             return 'Very low'
 
-        # If we've reached here, it means we have some missing or truncated genes
-        if locus_coverage >= 0.85:
-            return 'Low'
+        # Default case
         return 'Very low'
 
     # def select_best_type(self, type_report):
@@ -717,32 +713,68 @@ class TypeAnalysis:
 
     def select_best_type(self, type_report):
         type_hierarchy = ['None', 'Low', 'Good', 'High', 'Very High', 'Perfect']
-        highest_priority_type = 'None'
-        highest_priority_locus = ''
+        best_locus = None
+        best_metrics = {'coverage': 0, 'present_genes': 0}
+
         for idx, row in type_report.iterrows():
-            if type_hierarchy.index(row['Type']) > type_hierarchy.index(highest_priority_type):
-                highest_priority_type = row['Type']
-                highest_priority_locus = row['Locus']
-        return highest_priority_locus, highest_priority_type
+            if best_locus is None or (
+                    type_hierarchy.index(row['Type']) == type_hierarchy.index(best_locus['Type']) and
+                    (row['Locus Coverage'] > best_metrics['coverage'] or
+                     row['Present Genes'] > best_metrics['present_genes'])
+            ):
+                best_locus = row
+                best_metrics = {
+                    'coverage': row['Locus Coverage'],
+                    'present_genes': row['Present Genes']
+                }
+
+        return str(best_locus['Locus']), str(best_locus['Type'])
 
 
 if __name__ == "__main__":
-    base_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/assign_types/cellulose/test_1'
-    reference_types = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/assign_types/reference_types_database/cellulose/types_cellulose.gb"
-    prokka_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/assign_types/cellulose/test_1/prokka'
-    proteins_faa = get_prokka_faa_file(prokka_folder)
+    import glob  # Add this import at the top of the file
 
+    # Define paths
+    base_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/rubus2/more_testing'
+    reference_types = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_types_database/T3SS_II/types_T3SS_II.gb"
+    prokka_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/rubus2/more_testing/prokka'
+
+    # Debug: Check if prokka folder exists and list its contents
+    print(f"Checking prokka folder: {prokka_folder}")
+    if os.path.exists(prokka_folder):
+        print("Prokka folder exists")
+        print("Contents of prokka folder:")
+        print(os.listdir(prokka_folder))
+    else:
+        print("Prokka folder does not exist!")
+        exit(1)
+
+    # Create required folders
     db_folder = os.path.join(base_folder, "db_folder")
     results_folder = os.path.join(base_folder, "results")
+    os.makedirs(db_folder, exist_ok=True)
+    os.makedirs(results_folder, exist_ok=True)
+
+    # Try to find proteins.faa file
+    print("\nLooking for proteins.faa file...")
+    faa_pattern = os.path.join(prokka_folder, '*.faa')
+    matching_files = glob.glob(faa_pattern)
+    print(f"Found .faa files: {matching_files}")
+
+    proteins_faa = get_prokka_faa_file(prokka_folder)
+    if not proteins_faa or not os.path.exists(proteins_faa):
+        raise FileNotFoundError(f"Could not find proteins.faa file in {prokka_folder}")
+    print(f"Using proteins.faa from: {proteins_faa}")
+
+    # Define output files
     final_csv_file = os.path.join(base_folder, "final.csv")
     output_csv = os.path.join(base_folder, "loci_gene_presence.csv")
+    input_csv = os.path.join(base_folder, "loci.csv")
 
     # Initialize BlastProteinv2
     blast = BlastProteinv2(reference_types=reference_types, db_folder=db_folder, results_folder=results_folder)
 
     # Create CSV of loci information
-    # Assuming input_csv is created as part of the process, you might need to define input_csv path
-    input_csv = os.path.join(base_folder, "loci.csv")
     blast.create_csv_loci(input_csv)
 
     # Process CSV and perform BLAST searches
@@ -751,11 +783,14 @@ if __name__ == "__main__":
     # Analyze locus information
     gene_presence = TypeAnalysis(input_csv=final_csv_file, output_csv=output_csv, proteins_faa=proteins_faa)
     df_analyzed = gene_presence.analyze_locus()
-    type_report, final_type_locus, final_type = gene_presence.assign_type(df_analyzed)
+    type_report, final_type_locus, final_type, flagged_genes, locus_info = gene_presence.assign_type(df_analyzed)
 
-    # Print all values in the report
-    pd.set_option('display.max_rows', None)  # Ensure all rows are printed
-    for idx, row in type_report.iterrows():
-        print(row)
-
-    print(f"Final Assigned Type: {final_type_locus} ({final_type})")
+    # Print results
+    print("\nType Report:")
+    print(type_report)
+    print(f"\nFinal Type Locus: {final_type_locus}")
+    print(f"Final Type: {final_type}")
+    print(f"Flagged Genes: {flagged_genes}")
+    print("\nLocus Information:")
+    for locus_type, info in locus_info.items():
+        print(f"{locus_type}: {info}")

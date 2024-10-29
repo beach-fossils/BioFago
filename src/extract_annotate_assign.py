@@ -163,6 +163,6 @@ def extract_annotate_assign(genomes_folder: Path) -> List[tuple]:
 
 
 if __name__ == "__main__":
-    genomes_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/reference_genome'
+    genomes_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/rubus2/testing3'
 
     extract_annotate_assign(genomes_folder)
