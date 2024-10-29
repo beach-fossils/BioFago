@@ -1,0 +1,77 @@
+{
+  "CRR1": {
+    "Groups Ia and Ib": {
+      "A": [
+        "01SFR-BO", "ACW 56400/pEI70", "ACW 63579", "CFBP 1232T", "CFBP 1430",
+        "CFBP 2301", "CFBP 3020", "CFBP 3025", "CFBP 3049", "Ea 110R",
+        "Ea 209/pEL60", "Ea 4-82", "Ea 7/74", "LebB66/pEL60"
+      ],
+      "B": ["Ea 273/pEA72"],
+      "C": ["Ea 02"],
+      "D": [
+        "ACW 63889", "ACW 64132", "CFBP 3098", "LebA3/pEL60", "UPN 527 (DpEA29)"
+      ],
+      "E": ["Ea 153"],
+      "F": ["Ea 263"]
+    },
+    "Group II": {
+      "G": ["CFBP 3792", "UTRJ2/pEU30", "UTFer2/pEU30"],
+      "K": ["IH 3-1/pEA1.7"],
+      "L": ["IL-5/pEA2.8"],
+      "M": ["Ea 7-96*/pEA2.8"],
+      "N": ["Ea 6-96*"]
+    },
+    "Group III": {
+      "H": ["JL1185", "LA476"],
+      "I": ["JL1189/pEU30", "LA092/pEU30", "OR25/pEU30", "OR29/pEU30"]
+    }
+  },
+  "CRR2": {
+    "Groups Ia and II": {
+      "a": [
+        "01SFR-BO", "ACW 56400/pEI70", "ACW 63230", "ACW 63579", "ACW 64132",
+        "CFBP 1232T", "CFBP 1430", "CFBP 2301", "CFBP 3020", "CFBP 3025",
+        "CFBP 3098", "CFBP 3792", "Ea 153", "Ea 209/pEL60", "Ea 4-82",
+        "Ea 7/74", "LebA3/pEL60", "LebB66/pEL60", "UPN 527 (DpEA29)"
+      ],
+      "b": ["Ea 273/pEA72"],
+      "c": ["Ea 02"],
+      "d": ["Ea 263"],
+      "e": ["UTRJ2/pEU30", "UTFer2/pEU30"],
+      "f": ["ACW 63889"],
+      "g": ["Ea 110R"]
+    },
+    "Group Ib": {
+      "h": ["CFBP 3049"],
+      "i": ["JL1185"]
+    },
+    "Group III": {
+      "i": [
+        "JL1189/pEU30", "LA092/pEU30", "LA476", "OR25/pEU30", "OR29/pEU30"
+      ],
+      "j": ["IH 3-1/pEA1.7"]
+    },
+    "Rubus isolates": {
+      "k": ["IL-5/pEA2.8"],
+      "l": ["Ea 7-96*/pEA2.8"],
+      "m": ["Ea 6-96*"]
+    }
+  },
+  "CRR4": {
+    "Groups Ia, Ib, II and III": {
+      "a": [
+        "01SFR-BO", "ACW 56400/pEI70", "ACW 63230", "ACW 63579", "ACW 63889",
+        "ACW 64132", "CFBP 1232T", "CFBP 1430", "CFBP 2301", "CFBP 3020",
+        "CFBP 3025", "CFBP 3049", "CFBP 3098", "CFBP 3792", "Ea 02",
+        "Ea 110R", "Ea 153", "Ea 209/pEL60", "Ea 263", "Ea 273/pEA72",
+        "Ea 4-82", "Ea 7/74", "IH 3-1/pEA1.7", "JL1185", "JL1189/pEU30",
+        "LA092/pEU30", "LA476", "LebA3/pEL60", "LebB66/pEL60", "OR25/pEU30",
+        "OR29/pEU30", "UPN 527 (DpEA29)", "UTRJ2/pEU30", "UTFer2/pEU30"
+      ]
+    },
+    "Rubus isolates": {
+      "b": ["IL-5/pEA2.8"],
+      "g": ["Ea 6-96*", "Ea 7-96*/pEA2.8"]
+    }
+  }
+}

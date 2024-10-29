@@ -116,8 +116,54 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
         cleanup_files(paths)
         remove_empty_directories(paths)
 
+# def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_path: Path,
+#                                    threshold_species: float = 0.95):
+#     setup_logging()
+#
+#     input_path = Path(single_sequence_path)
+#     species_finder_path = Path(species_finder_path)
+#
+#     paths = generate_paths(input_path, species_finder_path)
+#     ensure_directories(paths)
+#
+#     try:
+#         # Run assembly statistics
+#         fasta_stats = FastaStatistics(single_sequence_path)
+#         stats = fasta_stats.generate_assembly_statistics()
+#         df_stats = pd.DataFrame([stats])
+#
+#         # Add placeholder species information
+#         df_stats['Species'] = 'Not Analyzed'
+#         df_stats['ANI'] = 0.0
+#
+#         logging.info("Skipping ANI analysis as requested.")
+#
+#         # Ensure the output file doesn't exist before writing
+#         if paths['species_output_file'].exists():
+#             paths['species_output_file'].unlink()
+#
+#         df_stats.to_csv(paths['species_output_file'], index=False)
+#         logging.info(f"Results saved to {paths['species_output_file']}")
+#
+#     except Exception as e:
+#         logging.error(f"Error in run_species_metrics_finder: {e}")
+#         df_stats = pd.DataFrame([{
+#             'Species': 'Unknown',
+#             'ANI': 0.0,
+#             'Error': str(e)
+#         }])
+#         df_stats.to_csv(paths['species_output_file'], index=False)
+#         logging.info(f"Results saved to {paths['species_output_file']} with Unknown species due to error")
+#
+#     finally:
+#         cleanup_files(paths)
+#         remove_empty_directories(paths)
+#
+#     return df_stats
+
 
 if __name__ == '__main__':
 
-    single_sequence_path = '/Users/josediogomoura/Documents/BioFago/BioFago/data/test_2/genomes2/PRR28_CAB/PRR28_CAB.fasta'
-    new_run_species_metrics_finder(single_sequence_path)
+    pass
+
+

@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple
 # Define the base paths for the reference_crispr directory
 BASE_PATH = Path(__file__).resolve().parent.parent.parent
 REFERENCE_CRISPR_PATH = BASE_PATH / 'reference_crispr'
-MAP_JSON = REFERENCE_CRISPR_PATH / 'map.json'
+MAP_JSON = REFERENCE_CRISPR_PATH / 'updated_crispr.json'
 SPACERS_FOLDER = REFERENCE_CRISPR_PATH / 'spacers_csv'
 
 
