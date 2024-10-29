@@ -97,16 +97,17 @@ def process_genome_with_reference(
     # Analyze locus information
     gene_presence = TypeAnalysis(input_csv=final_csv_file, output_csv=output_csv, proteins_faa=proteins_faa)
     df_analyzed = gene_presence.analyze_locus()
-    type_report, final_type_locus, final_type = gene_presence.assign_type(df_analyzed)
+    type_report, final_type_locus, final_type, flagged_genes, final_type_info = gene_presence.assign_type(df_analyzed)
 
     pd.set_option('display.max_rows', None)
     for idx, row in type_report.iterrows():
         logging.info(row)
 
     logging.info(
-        f"Final Assigned Type for {os.path.basename(genome_dir)} with {reference_file.stem}: {final_type_locus} ({final_type})")
+        f"Final Assigned Type for {os.path.basename(genome_dir)} with {reference_file.stem}: {final_type_info}")
 
-    return os.path.basename(genome_dir), reference_file.stem, final_type_locus, final_type
+    return os.path.basename(
+        genome_dir), reference_file.stem, final_type_locus, final_type, flagged_genes, final_type_info
 
 
 def process_genome(genome_dir: str, base_folder: str) -> List[tuple]:
@@ -153,10 +154,15 @@ def extract_annotate_assign(genomes_folder: Path) -> List[tuple]:
         results = process_genome(genome_dir, base_folder)
         all_results.extend(results)
 
+    logging.info("Final results:")
+    for result in all_results:
+        logging.info(
+            f"Genome: {result[0]}, Reference: {result[1]}, Type: {result[2]} ({result[3]}), Flagged genes: {result[4]}")
+
     return all_results
 
 
 if __name__ == "__main__":
-    genomes_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/test_2/genomes'
+    genomes_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/reference_genome'
 
     extract_annotate_assign(genomes_folder)

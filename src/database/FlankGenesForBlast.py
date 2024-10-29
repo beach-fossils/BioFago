@@ -24,7 +24,7 @@ class FlankGeneExtractor:
         self.ref_seq_gb = ref_seq_gb
         self.first_flank_gene = None
         self.last_flank_gene = None
-        self.ref_sequence = None  # Attribute to store the reference genome sequence
+        self.ref_sequence = None
 
     def extract_flank_genes(self):
         try:
@@ -33,22 +33,40 @@ class FlankGeneExtractor:
                 if not sequences:
                     raise ValueError("No sequences found in the provided GenBank file.")
 
+                logging.info(f"Successfully parsed GenBank file. Found {len(sequences)} sequence(s)")
+
                 # Store the whole sequence of the reference genome
                 self.ref_sequence = sequences[0].seq
 
-                # Iterate through features to find the first and last gene
+                # Debug: Print all features and their types
+                logging.info("Features found in GenBank file:")
+                for i, feature in enumerate(sequences[0].features):
+                    logging.info(f"Feature {i + 1}: Type = {feature.type}")
+                    if feature.type == "CDS":
+                        logging.info(f"  Qualifiers: {feature.qualifiers}")
+
+                # Find all CDS features with associated genes
+                gene_features = []
                 for feature in sequences[0].features:
-                    if feature.type == "gene":
-                        if self.first_flank_gene is None:  # The first gene found
-                            self.first_flank_gene = feature
-                        self.last_flank_gene = feature  # Keep updating last_gene until the end
+                    if feature.type == "CDS" and 'gene' in feature.qualifiers:
+                        gene_features.append(feature)
+                        logging.info(f"Found gene: {feature.qualifiers['gene'][0]}")
 
-                # Check if we found any gene at all
-                if self.first_flank_gene is None or self.last_flank_gene is None:
-                    raise ValueError("The first or last feature is not a gene.")
+                logging.info(f"Total genes found: {len(gene_features)}")
 
-                logging.info(
-                    f"Extracted flank genes: First gene - {self.first_flank_gene.qualifiers['gene'][0]}, Last gene - {self.last_flank_gene.qualifiers['gene'][0]}")
+                if not gene_features:
+                    raise ValueError("No genes found in the GenBank file.")
+
+                # Get first and last gene features
+                self.first_flank_gene = gene_features[0]
+                self.last_flank_gene = gene_features[-1]
+
+                first_gene_name = self.first_flank_gene.qualifiers['gene'][0]
+                last_gene_name = self.last_flank_gene.qualifiers['gene'][0]
+
+                logging.info(f"First gene: {first_gene_name} at position {self.first_flank_gene.location}")
+                logging.info(f"Last gene: {last_gene_name} at position {self.last_flank_gene.location}")
+
         except Exception as e:
             logging.error(f"Error extracting flank genes: {e}")
             raise
@@ -58,18 +76,31 @@ class FlankGeneExtractor:
             if self.ref_sequence is None:
                 raise ValueError("Reference sequence not stored. Cannot extract gene sequences.")
 
-            # Create SeqRecord objects for the first and last genes from the stored attributes
-            first_gene_record = SeqRecord(Seq(str(self.first_flank_gene.extract(self.ref_sequence))),
-                                          id=self.first_flank_gene.qualifiers['gene'][0],
-                                          description="First gene")
-            last_gene_record = SeqRecord(Seq(str(self.last_flank_gene.extract(self.ref_sequence))),
-                                         id=self.last_flank_gene.qualifiers['gene'][0],
-                                         description="Last gene")
+            first_gene_name = self.first_flank_gene.qualifiers['gene'][0]
+            last_gene_name = self.last_flank_gene.qualifiers['gene'][0]
+
+            # Create SeqRecord objects for the first and last genes
+            first_gene_record = SeqRecord(
+                Seq(str(self.first_flank_gene.extract(self.ref_sequence))),
+                id=first_gene_name,
+                description="First gene"
+            )
+            last_gene_record = SeqRecord(
+                Seq(str(self.last_flank_gene.extract(self.ref_sequence))),
+                id=last_gene_name,
+                description="Last gene"
+            )
 
             # Write these records to a FASTA file
             with open(output_file_path, "w") as output_handle:
                 SeqIO.write([first_gene_record, last_gene_record], output_handle, "fasta")
             logging.info(f"Successfully wrote genes to FASTA file at {output_file_path}")
+
+            # Debug: Print the content of the written FASTA file
+            logging.info("FASTA file content:")
+            with open(output_file_path, "r") as f:
+                logging.info(f.read())
+
         except Exception as e:
             logging.error(f"Error writing genes to FASTA: {e}")
             raise
@@ -206,49 +237,53 @@ def main_move():
 def main():
     # Define paths and parameters
     #genomes_folder_path = "/Volumes/Crucial_X9/BioFago/reference_crispr/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/fasta_files"
-    db_folder_path = "/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/db_folder"
-    results_folder_path = "/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/blast_results"
+    #Fix the results path to point to blast_results directory
+    db_folder_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/db"
+    results_folder_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/blast_results"
     # ref_seq_gb_path = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/ref_sequences/Capsule_locus_12genes_X77921.gb"
-    extracted_genes_fasta = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/flank_genes/flank_genes.fasta'
+    extracted_genes_fasta = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/flank_genes/flank_genes.fasta'
 
     # Ensure output folders exist
     Path(db_folder_path).mkdir(parents=True, exist_ok=True)
     Path(results_folder_path).mkdir(parents=True, exist_ok=True)
 
-    # # Extract flank genes and write to a FASTA file
+    # # # Extract flank genes and write to a FASTA file
+    # ref_seq_gb_path = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/PROKKA_10252024.gbk'
     # logging.info("Extracting flank genes...")
     # flank_gene_extractor = FlankGeneExtractor(ref_seq_gb_path)
     # flank_gene_extractor.extract_flank_genes()
-    # flank_gene_extractor.write_genes_to_fasta(extracted_genes_fasta)
+    # flank_gene_extractor.write_genes_to_fasta(output_file_path='/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/flank_genes/flank_genes.fasta')
 
     # Collect all .fna genome files from subdirectories
     # Now you can use it like this
-    src_folder = "/reference_crispr/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/reference_crispr"
-    dest_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/fasta"
-    move_files(src_folder, dest_folder)
+    #src_folder = "/reference_crispr/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/reference_crispr"
+    dest_folder = '/Volumes/Crucial_X9/BioFago/data/ea_genomes'
+    #move_files(src_folder, dest_folder)
 
-    # # Assuming BlastRunner can take a list of genome files
-    logging.info("Initializing BlastRunner with collected genome files...")
+    logging.info(f"Extracted genes FASTA exists: {os.path.exists(extracted_genes_fasta)}")
+    logging.info(f"Destination folder exists: {os.path.exists(dest_folder)}")
+    logging.info(f"Number of genome files: {len(os.listdir(dest_folder))}")
+
     gene_blast_runner = BlastRunner(extracted_genes_fasta, dest_folder, db_folder_path, results_folder_path)
 
-    # Process genomes (this function must be able to handle a list of genome file paths)
-    logging.info("Processing collected genome files...")
+    logging.info("Starting genome processing...")
     gene_blast_runner.process_genomes()
+    logging.info("Genome processing completed")
 
-    # Run BLAST on all genomes (this function must also handle the list)
-    logging.info("Running BLAST on all genomes...")
+    logging.info("Starting BLAST...")
     gene_blast_runner.run_blast_on_all_genomes()
+    logging.info("BLAST completed")
 
     # Step 3: Compile BLAST results into a CSV
-    blast_results_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/blast_results'
-    genomes_folder = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/fasta"
-    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/blast_csv/compiled_results.csv'
+    blast_results_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/blast_results'
+    genomes_folder = '/Volumes/Crucial_X9/BioFago/data/ea_genomes'
+    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/csv_blast/compiled_results.csv'
     log_file = os.path.join(os.path.dirname(output_csv), 'post_blast_output.log')
     #
     post_blast = PostBlastOutput(blast_results_folder, genomes_folder, output_csv, log_file)
     post_blast.compile_blast_results_to_csv()  # Compiles BLAST results into a CSV
     #
-    extracted_path = "/reference_crispr/OtherSpecies/Erwinia_billingiae/srl/extracted_sequences"
+    extracted_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II1/extracted_seq"
     post_blast.extract_regions_from_genomes_v2(extracted_path)
 
     logging.info("Workflow completed successfully.")

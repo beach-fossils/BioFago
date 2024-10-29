@@ -5,17 +5,20 @@ from Bio import SeqIO
 from tqdm import tqdm
 import os
 import json
-import csv
 import logging
 import tempfile
 from typing import Dict, List, Tuple, Any
 from collections import Counter
+import multiprocessing
+import csv
+from io import StringIO
+import re
 
 
 
 BASE_PATH = Path(__file__).resolve().parent.parent.parent
 REFERENCE_CRISPR_PATH = BASE_PATH / 'reference_crispr'
-MAP_JSON = REFERENCE_CRISPR_PATH / 'map.json'
+MAP_JSON = REFERENCE_CRISPR_PATH / 'updated_crispr.json'
 SPACERS_FOLDER = REFERENCE_CRISPR_PATH / 'spacers_csv'
 
 
@@ -65,7 +68,20 @@ class CRRFinder:
         """Load group definitions from a JSON file."""
         try:
             with open(MAP_JSON, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+
+            # Recursively strip whitespace from spacer IDs
+            def strip_spacers(obj):
+                if isinstance(obj, dict):
+                    return {k: strip_spacers(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [strip_spacers(item) for item in obj]
+                elif isinstance(obj, str):
+                    return obj.strip()
+                else:
+                    return obj
+
+            return strip_spacers(data)
         except FileNotFoundError:
             logging.error(f"Group definition file not found: {MAP_JSON}")
         except json.JSONDecodeError as e:
@@ -161,40 +177,50 @@ class CRRFinder:
             logging.warning(f"{crr_type} not found in the map JSON.")
             return identified_groups
 
-        spacers_in_genome = [spacer for spacer, count in presence_matrix.items() if count > 0]
+        # Trim whitespace from keys in presence_matrix
+        presence_matrix = {k.strip(): v for k, v in presence_matrix.items()}
 
-        for group, subgroups in self.groups[crr_type].items():
-            identified_groups[group] = {}
-            for subgroup, spacers in subgroups.items():
+        spacers_in_genome = set(spacer for spacer, count in presence_matrix.items() if count > 0)
+
+        def process_group(path, group_data):
+            if isinstance(group_data, dict):
+                for key, value in group_data.items():
+                    process_group(path + [key], value)
+            elif isinstance(group_data, list):
+                # Reached the spacers list
+                subgroup_name = ' > '.join(path)
+                spacers = set(spacer.strip() for spacer in group_data)  # Strip whitespace from spacers
                 total_spacers = len(spacers)
-                present_spacers = sum(
-                    min(presence_matrix.get(spacer, 0), spacers.count(spacer)) for spacer in set(spacers))
-                present_percentage = (present_spacers / total_spacers) * 100
+                present_spacers = len(spacers.intersection(spacers_in_genome))
+                present_percentage = (present_spacers / total_spacers) * 100 if total_spacers > 0 else 0
+                total_spacers_found_percentage = min(
+                    (present_spacers / len(spacers_in_genome)) * 100 if spacers_in_genome else 0, 100)
 
-                total_spacers_found_percentage = (
-                                                             present_spacers / self.total_spacers_found) * 100 if self.total_spacers_found > 0 else 0
+                missing_spacers = list(spacers - spacers_in_genome)
+                spacers_in_genome_not_in_subgroup = list(spacers_in_genome - spacers)
 
-                spacers_in_subgroup = [spacer for spacer in set(spacers) if
-                                       presence_matrix.get(spacer, 0) >= spacers.count(spacer)]
-                spacers_in_genome_not_in_subgroup = [spacer for spacer in spacers_in_genome if spacer not in spacers]
+                composite_score = (present_percentage + total_spacers_found_percentage) / 2
 
-                identified_groups[group][subgroup] = {
+                identified_groups[subgroup_name] = {
                     'present_percentage': present_percentage,
                     'total_spacers': total_spacers,
                     'present_spacers': present_spacers,
                     'total_spacers_found_in_genome_percentage': total_spacers_found_percentage,
-                    'missing_spacers': [spacer for spacer in set(spacers) if
-                                        presence_matrix.get(spacer, 0) < spacers.count(spacer)],
-                    'spacers_in_genome_not_in_subgroup': spacers_in_genome_not_in_subgroup
+                    'missing_spacers': missing_spacers,
+                    'spacers_in_genome_not_in_subgroup': spacers_in_genome_not_in_subgroup,
+                    'composite_score': composite_score
                 }
+            else:
+                logging.warning(f"Unexpected data type in group structure at {'.'.join(path)}: {type(group_data)}")
 
-        # Sort groups by confidence score
-        for group in identified_groups:
-            identified_groups[group] = dict(sorted(
-                identified_groups[group].items(),
-                key=lambda item: (item[1]['total_spacers_found_in_genome_percentage'], item[1]['present_percentage']),
-                reverse=True
-            ))
+        process_group([], self.groups[crr_type])
+
+        # Sort the identified groups by composite score
+        identified_groups = dict(sorted(
+            identified_groups.items(),
+            key=lambda item: item[1]['composite_score'],
+            reverse=True
+        ))
 
         return identified_groups
 
@@ -313,11 +339,17 @@ class CRRFinder:
         return best_type
 
     def _get_best_group(self, data: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
-        best_group = max(
-            ((group, self._get_best_type(group_data)) for group, group_data in data.items()),
-            key=lambda x: x[1][1]["composite_score"]
+        if not data:
+            return None, None, None
+        best_group_name, best_value = max(
+            data.items(),
+            key=lambda item: item[1]['composite_score']
         )
-        return best_group[0], best_group[1][0], best_group[1][1]
+        # Split the subgroup path to extract group and subgroup names
+        group_parts = best_group_name.split(' > ')
+        best_group = group_parts[0] if group_parts else ''
+        best_subgroup = ' > '.join(group_parts[1:]) if len(group_parts) > 1 else ''
+        return best_group, best_subgroup, best_value
 
     def get_crr_summary(self) -> str:
         """Summarize the CRR best results for the genome."""
@@ -335,22 +367,232 @@ class CRRFinder:
         return "CRR: No results"
 
 
+def traverse_genomes(root_dir: Path) -> List[Tuple[Path, str, str, str]]:
+    """
+    Traverse the directory structure and yield genome files with their clade information.
+    """
+    for clade in root_dir.iterdir():
+        if clade.is_dir():
+            for subclade in clade.iterdir():
+                if subclade.is_dir():
+                    for subsubclade in subclade.iterdir():
+                        if subsubclade.is_dir():
+                            for genome_file in subsubclade.glob('*.fn*'):  # Match both .fna and .fasta
+                                yield genome_file, clade.name, subclade.name, subsubclade.name
+                        else:
+                            for genome_file in subclade.glob('*.fn*'):  # Match both .fna and .fasta
+                                yield genome_file, clade.name, subclade.name, ''
+                else:
+                    for genome_file in clade.glob('*.fn*'):  # Match both .fna and .fasta
+                        yield genome_file, clade.name, '', ''
+def collect_results(root_dir: Path) -> List[Tuple[str, str, str, str, str]]:
+    results = []
+    for clade in root_dir.iterdir():
+        if clade.is_dir():
+            for subclade in clade.iterdir():
+                if subclade.is_dir():
+                    for subsubclade in subclade.iterdir():
+                        if subsubclade.is_dir():
+                            results.extend(process_directory(subsubclade, clade.name, subclade.name, subsubclade.name))
+                        else:
+                            results.extend(process_directory(subclade, clade.name, subclade.name, ''))
+                else:
+                    results.extend(process_directory(clade, clade.name, '', ''))
+    return results
 
+def process_directory(directory: Path, clade: str, subclade: str, subsubclade: str) -> List[Tuple[str, str, str, str, str]]:
+    results = []
+    for genome_file in directory.glob('*.fn*'):
+        crr_results_file = directory / 'CRR_finder' / genome_file.stem / f'{genome_file.stem}_CRR_best_results.csv'
+        if crr_results_file.exists():
+            try:
+                with open(crr_results_file, 'r') as f:
+                    reader = csv.DictReader(f)
+                    crr_info = "CRR: "
+                    for row in reader:
+                        crr_info += f"{row['CRR Type']} - Group: {row['Best Group']}, Subgroup: {row['Best Subgroup']}, Score: {row['composite_score']}; "
+                    crr_info = crr_info.rstrip('; ')
+                results.append((genome_file.stem, clade, subclade, subsubclade, crr_info))
+            except Exception as e:
+                logging.error(f"Error processing {crr_results_file}: {e}")
+                results.append((genome_file.stem, clade, subclade, subsubclade, f"Error: {str(e)}"))
+        else:
+            results.append((genome_file.stem, clade, subclade, subsubclade, "CRR: No results"))
+    return results
+
+
+
+# def process_genome(genome_file, genome_dir):
+#     try:
+#         logging.info(f"Processing genome: {genome_file.name}")
+#
+#         # Create a CRRFinder instance for each genome
+#         crr_finder = CRRFinder(genome_file, genome_dir)
+#
+#         # Analyze the genome
+#         crr_finder.analyze_genome()
+#
+#         # Process the results
+#         crr_finder.process_directory()
+#
+#         # Get the CRR summary
+#         crr_info = crr_finder.get_crr_summary()
+#
+#         # Extract genome accession/name (remove .fasta extension)
+#         genome_accession = genome_file.stem
+#
+#         logging.info(f"Finished processing {genome_file.name}")
+#         return genome_accession, crr_info
+#     except Exception as e:
+#         logging.error(f"An error occurred during the analysis of {genome_file}: {e}")
+#         return genome_file.stem, f"Error: {str(e)}"
+
+def index_genome_files(root_dir: Path) -> List[Tuple[Path, str, str, str]]:
+    """
+    Index all genome files and their clade information.
+    """
+    indexed_files = []
+    for clade in root_dir.iterdir():
+        if clade.is_dir():
+            print(f"Checking clade: {clade.name}")
+            for item in clade.iterdir():
+                if item.is_dir():
+                    print(f"  Checking subclade: {item.name}")
+                    for subitem in item.iterdir():
+                        if subitem.is_dir():
+                            print(f"    Checking subsubclade: {subitem.name}")
+                            for genome_file in subitem.glob('*.[ff][na]*'):  # Match .fna and .fasta
+                                print(f"      Found file: {genome_file.name}")
+                                indexed_files.append((genome_file, clade.name, item.name, subitem.name))
+                        else:
+                            if subitem.suffix.lower() in ['.fna', '.fasta']:
+                                print(f"    Found file: {subitem.name}")
+                                indexed_files.append((subitem, clade.name, item.name, ''))
+                else:
+                    if item.suffix.lower() in ['.fna', '.fasta']:
+                        print(f"  Found file: {item.name}")
+                        indexed_files.append((item, clade.name, '', ''))
+
+    print(f"Total files indexed: {len(indexed_files)}")
+    return indexed_files
+
+
+def process_genome(genome_file: Path) -> Tuple[str, str]:
+    try:
+        logging.info(f"Starting to process genome: {genome_file.name}")
+
+        # Create a CRRFinder instance for each genome
+        crr_finder = CRRFinder(genome_file, genome_file.parent)
+        logging.info(f"CRRFinder instance created for {genome_file.name}")
+
+        # Analyze the genome
+        crr_finder.analyze_genome()
+        logging.info(f"Genome analysis completed for {genome_file.name}")
+
+        # Process the results
+        crr_finder.process_directory()
+        logging.info(f"Directory processing completed for {genome_file.name}")
+
+        # Get the CRR summary
+        crr_info = crr_finder.get_crr_summary()
+        logging.info(f"CRR summary obtained for {genome_file.name}")
+
+        # Extract genome accession/name (remove file extension)
+        genome_accession = genome_file.stem
+
+        logging.info(f"Finished processing {genome_file.name}")
+        return genome_accession, crr_info
+    except Exception as e:
+        logging.error(f"An error occurred during the analysis of {genome_file}: {e}", exc_info=True)
+        return genome_file.stem, f"Error: {str(e)}"
+
+def analyze_genomes(csv_file_path):
+    warnings = []
+    exceptions = []
+
+    with open(csv_file_path, 'r') as file:
+        reader = csv.reader(file)
+        next(reader)  # Skip header row
+
+        for row in reader:
+            if len(row) < 2:
+                continue  # Skip empty rows
+
+            genome = row[0]
+            crr_summary = row[1]
+
+            # Extract CRR1 and CRR2 information using regex
+            crr1_match = re.search(r'CRR1 - Group: (.*?), Subgroup: .*?, Score: (\d+\.\d+)', crr_summary)
+            crr2_match = re.search(r'CRR2 - Group: (.*?), Subgroup: .*?, Score: (\d+\.\d+)', crr_summary)
+
+            if crr1_match and crr2_match:
+                crr1_group = crr1_match.group(1)
+                crr2_group = crr2_match.group(1)
+                crr1_score = float(crr1_match.group(2))
+                crr2_score = float(crr2_match.group(2))
+
+                # Check for warnings (not 100% on both CRR1 and CRR2)
+                if crr1_score < 100 or crr2_score < 100:
+                    warnings.append((genome, f"CRR1: {crr1_score}%, CRR2: {crr2_score}%"))
+
+                # Check for exceptions (different groups)
+                if crr1_group != crr2_group:
+                    exceptions.append((genome, f"CRR1: {crr1_group}, CRR2: {crr2_group}"))
+
+    return warnings, exceptions
 
 
 
 def main():
-    genome_dir = Path('/Users/josediogomoura/Documents/BioFago/BioFago/tests/data/genomes/GCF_000009045.1_ASM904v1_genomic')
-    genome_file = Path("/Users/josediogomoura/Documents/BioFago/BioFago/tests/data/genomes/GCF_000009045.1_ASM904v1_genomic/GCF_000009045.1_ASM904v1_genomic.fasta")
+    # Set up logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+    # Specify the directory containing the FASTA files
+    fasta_dir = Path('/Users/josediogomoura/Documents/BioFago/BioFago/test-data/genomes')
+
+    # Get all FASTA files in the directory
+    fasta_files = list(fasta_dir.glob('*.[ff][na]*'))  # This will match .fna and .fasta files
+    logging.info(f"Found {len(fasta_files)} FASTA files.")
+
+    # Set up multiprocessing
+    num_processes = multiprocessing.cpu_count()  # Use all available CPU cores
+    pool = multiprocessing.Pool(processes=num_processes)
+
+    # Process genomes in parallel
+    logging.info("Processing genomes...")
+    results = pool.map(process_genome, fasta_files)
+
+    # Close the pool and wait for all processes to finish
+    pool.close()
+    pool.join()
+
+    # Write results to CSV
+    output_csv = fasta_dir / 'genome_crr_summary.csv'
     try:
-        crr_finder = CRRFinder(genome_file, genome_dir.parent)
-        crr_finder.analyze_genome()
-        crr_finder.process_directory()
-        crr_info = crr_finder.get_crr_summary()
-        print(crr_info)
+        with open(output_csv, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(['Genome', 'CRR Summary'])  # Write header
+            csv_writer.writerows(results)
+        logging.info(f"Results written to {output_csv}")
     except Exception as e:
-        logging.error(f"An error occurred during the analysis of {genome_file}: {e}")
+        logging.error(f"Error writing to CSV file: {e}")
+
+    # Print results
+    for genome, crr_info in results:
+        print(f"{genome}: {crr_info}")
+
+    # Usage
+
+    # csv_data = '/Volumes/Crucial_X9/BioFago/data/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/fastas/genome_crr_summary.csv'
+    # warnings, exceptions = analyze_genomes(csv_data)
+    #
+    # print("Warnings (not 100% on both CRR1 and CRR2):")
+    # for genome, warning in warnings:
+    #     print(f"{genome}: {warning}")
+    #
+    # print("\nExceptions (different groups for CRR1 and CRR2):")
+    # for genome, exception in exceptions:
+    #     print(f"{genome}: {exception}")
 
 
 if __name__ == '__main__':

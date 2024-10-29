@@ -1,0 +1,788 @@
+{
+  "NC_013961": {
+    "T3SS": {
+      "hrpG": [
+        "EAMY_RS19980"
+      ],
+      "dspE": [
+        "EAMY_0557"
+      ],
+      "hrpA": [
+        "EAMY_RS25920"
+      ],
+      "hrpN": [
+        "EAMY_RS20000"
+      ],
+      "hrpW": [
+        "EAMY_RS20015"
+      ],
+      "hrpJ": [
+        "EAMY_RS24750"
+      ]
+    },
+    "other": {
+      "rcsA": [
+        "EAMY_RS24395"
+      ],
+      "fliG": [
+        "EAMY_RS24455",
+        "EAMY_RS29785"
+      ],
+      "fliM": [
+        "EAMY_RS24425",
+        "EAMY_RS29755"
+      ],
+      "fliN": [
+        "EAMY_RS24420",
+        "EAMY_RS29750"
+      ],
+      "purF": [
+        "EAMY_RS28425"
+      ],
+      "puuE": [
+        "EAMY_RS21420"
+      ],
+      "cysG": [
+        "EAMY_RS20925"
+      ],
+      "tpx": [
+        "EAMY_RS26025"
+      ],
+      "rpsJ": [
+        "EAMY_RS32970"
+      ],
+      "rpsF": [
+        "EAMY_RS31795"
+      ],
+      "moaB": [
+        "EAMY_RS23135"
+      ],
+      "dapD": [
+        "EAMY_RS30140"
+      ],
+      "aroQ": [
+        "EAMY_RS18710",
+        "EAMY_RS26365"
+      ],
+      "dsbA": [
+        "EAMY_RS17420"
+      ],
+      "fldX": [
+        "EAMY_RS26390"
+      ],
+      "ssuE": [
+        "EAMY_RS23825"
+      ],
+      "EAMY_2849": [
+        "EAMY_RS35300"
+      ],
+      "EAMY_1521": [
+        "EAMY_1521"
+      ],
+      "cbl": [
+        "EAMY_RS27390"
+      ],
+      "ssuC": [
+        "EAMY_RS23810"
+      ],
+      "EAMY_1401": [
+        "EAMY_RS36320"
+      ],
+      "EAMY_2390": [
+        "EAMY_2390"
+      ],
+      "EAMY_0913": [
+        "EAMY_0913"
+      ],
+      "cysD": [
+        "EAMY_RS20930"
+      ],
+      "ssuA": [
+        "EAMY_RS23820"
+      ],
+      "EAMY_1248": [
+        "EAMY_1248"
+      ],
+      "nac": [
+        "EAMY_RS27395"
+      ],
+      "EAMY_1801": [
+        "EAMY_RS25735"
+      ],
+      "EAMY_1983": [
+        "EAMY_1983"
+      ],
+      "tauC": [
+        "EAMY_RS33060"
+      ],
+      "EAMY_1395": [
+        "EAMY_1395"
+      ],
+      "sfnG": [
+        "EAMY_RS25740"
+      ],
+      "rfaH": [
+        "EAMY_RS18375"
+      ],
+      "luxS": [
+        "EAMY_RS21230"
+      ],
+      "crl": [
+        "EAMY_RS21600"
+      ],
+      "hrpK": [
+        "EAMY_RS19835"
+      ],
+      "tolC": [
+        "EAMY_RS19460"
+      ],
+      "ppdD": [
+        "EAMY_RS30525"
+      ],
+      "hofC": [
+        "EAMY_RS30535"
+      ],
+      "hinT": [
+        "EAMY_RS24325"
+      ]
+    },
+    "cellulose": {
+      "bcsA": [
+        "EAMY_RS33915"
+      ],
+      "bcsB": [
+        "EAMY_RS33910"
+      ],
+      "bcsC": [
+        "EAMY_RS33905"
+      ],
+      "bcsD": [
+        "EAMY_RS33900"
+      ],
+      "bcsE": [
+        "EAMY_RS33890"
+      ],
+      "bcsQ": [
+        "EAMY_RS33920"
+      ],
+      "bcsO": [
+        "EAMY_RS33925"
+      ]
+    },
+    "flg": {
+      "epmA": [
+        "EAMY_RS31920"
+      ],
+      "epmB": [
+        "EAMY_RS31945"
+      ],
+      "amyA": [
+        "EAMY_RS27200"
+      ],
+      "cheA": [
+        "EAMY_RS26980",
+        "EAMY_RS29580"
+      ],
+      "cheR": [
+        "EAMY_RS26955"
+      ],
+      "cheW": [
+        "EAMY_RS26975",
+        "EAMY_RS29575"
+      ],
+      "cheY": [
+        "EAMY_RS26945",
+        "EAMY_RS29810"
+      ],
+      "cheZ": [
+        "EAMY_RS26940",
+        "EAMY_RS29815"
+      ],
+      "flgA": [
+        "EAMY_RS24180",
+        "EAMY_RS29670"
+      ],
+      "flgB": [
+        "EAMY_RS24185",
+        "EAMY_RS29665"
+      ],
+      "flgC": [
+        "EAMY_RS24190",
+        "EAMY_RS29660"
+      ],
+      "flgD": [
+        "EAMY_RS24195",
+        "EAMY_RS29655"
+      ],
+      "flgE": [
+        "EAMY_RS24200",
+        "EAMY_RS29650"
+      ],
+      "flgF": [
+        "EAMY_RS24205",
+        "EAMY_RS29645"
+      ],
+      "flgG": [
+        "EAMY_RS24210",
+        "EAMY_RS29640"
+      ],
+      "flgH": [
+        "EAMY_RS24215",
+        "EAMY_RS29635"
+      ],
+      "flgI": [
+        "EAMY_RS24220",
+        "EAMY_RS29630"
+      ],
+      "flgJ": [
+        "EAMY_RS24225",
+        "EAMY_RS29625"
+      ],
+      "flgk": [
+        "EAMY_RS24230"
+      ],
+      "flgK": [
+        "EAMY_RS29620"
+      ],
+      "flgL": [
+        "EAMY_RS24235",
+        "EAMY_RS29615"
+      ],
+      "flgM": [
+        "EAMY_RS24175",
+        "EAMY_RS29675"
+      ],
+      "flgN": [
+        "EAMY_RS24170",
+        "EAMY_RS29680"
+      ],
+      "flhA": [
+        "EAMY_RS26930",
+        "EAMY_RS29825"
+      ],
+      "flhB": [
+        "EAMY_RS26935",
+        "EAMY_RS29820"
+      ],
+      "flhC": [
+        "EAMY_RS26995",
+        "EAMY_RS29595"
+      ],
+      "flhD": [
+        "EAMY_RS27000",
+        "EAMY_RS29600"
+      ],
+      "flhE": [
+        "EAMY_RS26925",
+        "EAMY_RS29830"
+      ],
+      "fliD": [
+        "EAMY_RS27185",
+        "EAMY_RS29695"
+      ],
+      "fliE": [
+        "EAMY_RS24465",
+        "EAMY_RS29795"
+      ],
+      "fliF": [
+        "EAMY_RS24460",
+        "EAMY_RS29790"
+      ],
+      "fliG": [
+        "EAMY_RS24455",
+        "EAMY_RS29785"
+      ],
+      "fliH": [
+        "EAMY_RS24450",
+        "EAMY_RS29780"
+      ],
+      "fliI": [
+        "EAMY_RS24445",
+        "EAMY_RS29775"
+      ],
+      "fliJ": [
+        "EAMY_RS24440",
+        "EAMY_RS29770"
+      ],
+      "fliK": [
+        "EAMY_RS24435",
+        "EAMY_RS29765"
+      ],
+      "fliL": [
+        "EAMY_RS24430",
+        "EAMY_RS29760"
+      ],
+      "fliM": [
+        "EAMY_RS24425",
+        "EAMY_RS29755"
+      ],
+      "fliN": [
+        "EAMY_RS24420"
+      ],
+      "fliO": [
+        "EAMY_RS24415",
+        "EAMY_RS29745"
+      ],
+      "fliP": [
+        "EAMY_RS24410",
+        "EAMY_RS29740"
+      ],
+      "fliQ": [
+        "EAMY_RS24405",
+        "EAMY_RS29735"
+      ],
+      "fliR": [
+        "EAMY_RS24400",
+        "EAMY_RS29730"
+      ],
+      "fliS": [
+        "EAMY_RS27190",
+        "EAMY_RS29690"
+      ],
+      "fliT": [
+        "EAMY_RS27195",
+        "EAMY_RS29685"
+      ],
+      "fliZ": [
+        "EAMY_RS27165"
+      ],
+      "gutQ": [
+        "EAMY_RS31450"
+      ],
+      "motA": [
+        "EAMY_RS26990",
+        "EAMY_RS29590"
+      ],
+      "motB": [
+        "EAMY_RS26985",
+        "EAMY_RS29585"
+      ]
+    },
+    "sorbitol": {
+      "srlD": [
+        "EAMY_RS31465"
+      ]
+    }
+  },
+  "NC_013971": {
+    "T3SS": {
+      "hrpL": [
+        "EAM_2894"
+      ],
+      "hrpX": [
+        "EAM_2893"
+      ]
+    },
+    "other": {
+      "lsc": [
+        "EAM_3468"
+      ],
+      "rlsA": [
+        "EAM_2870"
+      ],
+      "prtA": [
+        "EAM_3368"
+      ],
+      "argG": [
+        "EAM_0139"
+      ],
+      "waaL": [
+        "EAM_0086"
+      ],
+      "cspC": [
+        "EAM_1967"
+      ],
+      "iscS": [
+        "EAM_2492"
+      ],
+      "ppdA": [
+        "EAM_2735"
+      ],
+      "eop2": [
+        "EAM_2780"
+      ],
+      "hofB": [
+        "EAM_0730"
+      ],
+      "hinT": [
+        "EAM_1467"
+      ]
+    },
+    "Amylovoran": {
+      "amsL": [
+        "EAM_2163"
+      ],
+      "amsK": [
+        "EAM_2164"
+      ],
+      "amsJ": [
+        "EAM_2165"
+      ],
+      "amsF": [
+        "EAM_2166"
+      ],
+      "amsE": [
+        "EAM_2167"
+      ],
+      "amsD": [
+        "EAM_2168"
+      ],
+      "amsC": [
+        "EAM_2169"
+      ],
+      "amsB": [
+        "EAM_2170"
+      ],
+      "amsA": [
+        "EAM_2171"
+      ],
+      "amsI": [
+        "EAM_2172"
+      ],
+      "amsH": [
+        "EAM_2173"
+      ],
+      "amsG": [
+        "EAM_2174"
+      ]
+    },
+    "flag-1": {
+      "flgN": [
+        "EAM_1436"
+      ],
+      "flgM": [
+        "EAM_1437"
+      ],
+      "flgA": [
+        "EAM_1438"
+      ],
+      "flgB": [
+        "EAM_1439"
+      ],
+      "flgC": [
+        "EAM_1440"
+      ],
+      "flgD": [
+        "EAM_1441"
+      ],
+      "flgE": [
+        "EAM_1442"
+      ],
+      "flgF": [
+        "EAM_1443"
+      ],
+      "flgG": [
+        "EAM_1444"
+      ],
+      "flgH": [
+        "EAM_1445"
+      ],
+      "flgI": [
+        "EAM_1446"
+      ],
+      "flgJ": [
+        "EAM_1447"
+      ],
+      "flgk": [
+        "EAM_1448"
+      ],
+      "flgL": [
+        "EAM_1449"
+      ]
+    },
+    "flag-2": {
+      "fliR": [
+        "EAM_1484"
+      ],
+      "fliQ": [
+        "EAM_1485"
+      ],
+      "fliP": [
+        "EAM_1486"
+      ],
+      "fliO": [
+        "EAM_1487"
+      ],
+      "fliN": [
+        "EAM_1488"
+      ],
+      "fliM": [
+        "EAM_1489"
+      ],
+      "fliL": [
+        "EAM_1490"
+      ],
+      "fliK": [
+        "EAM_1491"
+      ],
+      "fliJ": [
+        "EAM_1492"
+      ],
+      "fliI": [
+        "EAM_1493"
+      ],
+      "fliH": [
+        "EAM_1494"
+      ],
+      "fliG": [
+        "EAM_1495"
+      ],
+      "fliF": [
+        "EAM_1496"
+      ],
+      "fliE": [
+        "EAM_1497"
+      ],
+      "EAM_1498": [
+        "EAM_1498"
+      ]
+    },
+    "flag-3": {
+      "flhE": [
+        "EAM_2019"
+      ],
+      "flhA": [
+        "EAM_2020"
+      ],
+      "flhB": [
+        "EAM_2021"
+      ],
+      "cheZ": [
+        "EAM_2022"
+      ],
+      "cheY": [
+        "EAM_2023"
+      ],
+      "cheB": [
+        "EAM_2024"
+      ],
+      "cheR": [
+        "EAM_2025"
+      ],
+      "EAM_2026": [
+        "EAM_2026"
+      ],
+      "record discontinued": [
+        "EAM_2027"
+      ],
+      "cheD": [
+        "EAM_2028"
+      ],
+      "cheW": [
+        "EAM_2029"
+      ],
+      "cheA": [
+        "EAM_2030"
+      ],
+      "motB": [
+        "EAM_2031"
+      ],
+      "motA": [
+        "EAM_2032"
+      ],
+      "flhC": [
+        "EAM_2033"
+      ],
+      "flhD": [
+        "EAM_2034"
+      ]
+    },
+    "flag-4": {
+      "EAM_2062": [
+        "EAM_2062"
+      ],
+      "dcyD": [
+        "EAM_2063"
+      ],
+      "fliZ": [
+        "EAM_2064"
+      ],
+      "fliA": [
+        "EAM_2065"
+      ],
+      "EAM_2066": [
+        "EAM_2066"
+      ],
+      "fliC": [
+        "EAM_2067"
+      ],
+      "fliD": [
+        "EAM_2068"
+      ],
+      "fliS": [
+        "EAM_2069"
+      ],
+      "fliT": [
+        "EAM_2070"
+      ],
+      "amyA": [
+        "EAM_2071"
+      ]
+    },
+    "flag-5": {
+      "cheW": [
+        "EAM_2537"
+      ],
+      "cheA": [
+        "EAM_2538"
+      ],
+      "motB": [
+        "EAM_2539"
+      ],
+      "motA": [
+        "EAM_2540"
+      ],
+      "flhC": [
+        "EAM_2541"
+      ],
+      "flhD": [
+        "EAM_2542"
+      ],
+      "fliA": [
+        "EAM_2543"
+      ],
+      "EAM_2544": [
+        "EAM_2544"
+      ],
+      "flgL": [
+        "EAM_2545"
+      ],
+      "flgK": [
+        "EAM_2546"
+      ],
+      "flgJ": [
+        "EAM_2547"
+      ],
+      "flgI": [
+        "EAM_2548"
+      ],
+      "flgH": [
+        "EAM_2549"
+      ],
+      "flgG": [
+        "EAM_2550"
+      ],
+      "flgF": [
+        "EAM_2551"
+      ],
+      "flgE": [
+        "EAM_2552"
+      ],
+      "flgD": [
+        "EAM_2553"
+      ],
+      "flgC": [
+        "EAM_2554"
+      ],
+      "flgB": [
+        "EAM_2555"
+      ],
+      "flgA": [
+        "EAM_2556"
+      ],
+      "flgM": [
+        "EAM_2557"
+      ],
+      "flgN": [
+        "EAM_2558"
+      ],
+      "fliT": [
+        "EAM_2559"
+      ],
+      "fliS": [
+        "EAM_2560"
+      ],
+      "fliD": [
+        "EAM_2561"
+      ]
+    },
+    "flag-6": {
+      "fliR": [
+        "EAM_2568"
+      ],
+      "fliQ": [
+        "EAM_2569"
+      ],
+      "fliP": [
+        "EAM_2570"
+      ],
+      "fliO": [
+        "EAM_2571"
+      ],
+      "fliN": [
+        "EAM_2572"
+      ],
+      "fliM": [
+        "EAM_2573"
+      ],
+      "fliL": [
+        "EAM_2574"
+      ],
+      "fliK": [
+        "EAM_2575"
+      ],
+      "fliJ": [
+        "EAM_2576"
+      ],
+      "fliI": [
+        "EAM_2577"
+      ],
+      "fliH": [
+        "EAM_2578"
+      ],
+      "fliG": [
+        "EAM_2579"
+      ],
+      "fliF": [
+        "EAM_2580"
+      ],
+      "fliE": [
+        "EAM_2581"
+      ],
+      "cheR": [
+        "EAM_2582"
+      ],
+      "cheB": [
+        "EAM_2583"
+      ],
+      "cheY": [
+        "EAM_2584"
+      ],
+      "cheZ": [
+        "EAM_2585"
+      ],
+      "flhB": [
+        "EAM_2586"
+      ],
+      "flhA": [
+        "EAM_2587"
+      ],
+      "flhE": [
+        "EAM_2588"
+      ]
+    },
+    "sorbitol": {
+      "srlA": [
+        "EAM_0521"
+      ],
+      "srlE": [
+        "EAM_0522"
+      ],
+      "srlB": [
+        "EAM_0523"
+      ],
+      "srlD": [
+        "EAM_0524"
+      ],
+      "srlM": [
+        "EAM_0525"
+      ],
+      "srlR": [
+        "EAM_0526"
+      ],
+      "gutQ": [
+        "EAM_0527"
+      ]
+    }
+  }
+}

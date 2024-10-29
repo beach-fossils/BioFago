@@ -1,5 +1,7 @@
+import multiprocessing
 import subprocess
 import logging
+from functools import partial
 from pathlib import Path
 import pandas as pd
 from Bio.Seq import Seq
@@ -9,6 +11,8 @@ from utils.get_prokka_faa_file import get_prokka_faa_file
 import csv
 import tempfile
 import os
+from typing import Dict, List, Tuple
+
 
 _PROTEIN_ALIGNER = PairwiseAligner(scoring='blastp', mode='local')
 
@@ -241,7 +245,7 @@ class BlastProteinv2:
                 'blastp',
                 '-query', str(query_fasta),
                 '-db', str(self.db_folder / self.db_name),
-                '-outfmt', '6 qseqid sseqid pident length qlen slen',
+                '-outfmt', '6 qseqid sseqid pident length qlen slen qstart qend sstart send',
                 '-out', str(output_file)
             ]
             logging.debug(f"Running blastp command: {' '.join(blast_cmd)}")
@@ -258,14 +262,28 @@ class BlastProteinv2:
             with open(blast_output_file, 'r') as file:
                 for line in file:
                     parts = line.strip().split('\t')
-                    qseqid, sseqid, pident, length, qlen, slen = parts
+                    qseqid, sseqid, pident, length, qlen, slen, qstart, qend, sstart, send = parts
                     pident = float(pident)
                     length = int(length)
                     qlen = int(qlen)
                     slen = int(slen)
+                    qstart = int(qstart)
+                    qend = int(qend)
+                    sstart = int(sstart)
+                    send = int(send)
 
                     if not best_hit or best_hit['pident'] < pident:
-                        best_hit = {'sseqid': sseqid, 'pident': pident, 'length': length, 'qlen': qlen, 'slen': slen}
+                        best_hit = {
+                            'sseqid': sseqid,
+                            'pident': pident,
+                            'length': length,
+                            'qlen': qlen,
+                            'slen': slen,
+                            'qstart': qstart,
+                            'qend': qend,
+                            'sstart': sstart,
+                            'send': send
+                        }
                         logging.debug(f"Best hit updated: {best_hit}")
 
         except Exception as e:
@@ -273,48 +291,89 @@ class BlastProteinv2:
 
         return best_hit
 
+    # def process_csv(self, input_csv, proteins_faa, final_csv_file):
+    #     # Make sure the BLAST database is created
+    #     self.make_blast_db(proteins_faa)
+    #
+    #     results = []
+    #     with open(input_csv, 'r') as csvfile:
+    #         reader = csv.DictReader(csvfile)
+    #         for row in reader:
+    #             if row['Translation']:
+    #                 # Create a temporary FASTA file for the query sequence
+    #                 with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix=".fasta") as temp_fasta:
+    #                     temp_fasta.write(
+    #                         f">{row['Locus Tag']} {row['Product']}~~~{row['Gene']}\n{row['Translation']}\n")
+    #                     temp_fasta_name = temp_fasta.name
+    #
+    #                 output_filename = f"{row['Locus']}_{row['Gene']}_{row['Locus Tag']}_blast_output.txt"
+    #                 temp_output_file = self.results_folder / output_filename
+    #                 self.run_blast(temp_fasta_name, temp_output_file)
+    #                 best_hit = self.analyze_blast_results(temp_output_file)
+    #
+    #                 # Add locus and gene information to the BLAST results file
+    #                 with open(temp_output_file, 'a') as blast_file:
+    #                     blast_file.write(f"\nLocus: {row['Locus']}, Gene: {row['Gene']}\n")
+    #
+    #                 row['Best BLAST Identity'] = best_hit['pident'] if best_hit else ''
+    #                 row['Alignment Length'] = best_hit['length'] if best_hit else ''
+    #                 row['Translation Length'] = len(row['Translation']) if row['Translation'] else ''
+    #                 row['Reference Length'] = best_hit['slen'] if best_hit else ''
+    #
+    #                 # Clean up the temporary file
+    #                 Path(temp_fasta_name).unlink()
+    #
+    #             results.append(row)
+    #
+    #     with open(final_csv_file, 'w', newline='') as csvfile:
+    #         fieldnames = ["Locus", "Gene", "Locus Tag", "Product", "Protein ID", "Translation", "Nucleotide Sequence",
+    #                       "Best BLAST Identity", "Alignment Length", "Translation Length", "Reference Length"]
+    #         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    #         writer.writeheader()
+    #         for result in results:
+    #             writer.writerow(result)
+    #     logging.info(f"Created final CSV file: {final_csv_file}")
+
     def process_csv(self, input_csv, proteins_faa, final_csv_file):
         # Make sure the BLAST database is created
         self.make_blast_db(proteins_faa)
 
-        results = []
-        with open(input_csv, 'r') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                if row['Translation']:
-                    # Create a temporary FASTA file for the query sequence
-                    with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix=".fasta") as temp_fasta:
-                        temp_fasta.write(
-                            f">{row['Locus Tag']} {row['Product']}~~~{row['Gene']}\n{row['Translation']}\n")
-                        temp_fasta_name = temp_fasta.name
+        # Read CSV using pandas
+        df = pd.read_csv(input_csv)
 
-                    output_filename = f"{row['Locus']}_{row['Gene']}_{row['Locus Tag']}_blast_output.txt"
-                    temp_output_file = self.results_folder / output_filename
-                    self.run_blast(temp_fasta_name, temp_output_file)
-                    best_hit = self.analyze_blast_results(temp_output_file)
+        # Use multiprocessing to run BLAST searches in parallel
+        with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+            results = pool.map(partial(self.process_row, proteins_faa=proteins_faa), df.to_dict('records'))
 
-                    # Add locus and gene information to the BLAST results file
-                    with open(temp_output_file, 'a') as blast_file:
-                        blast_file.write(f"\nLocus: {row['Locus']}, Gene: {row['Gene']}\n")
-
-                    row['Best BLAST Identity'] = best_hit['pident'] if best_hit else ''
-                    row['Alignment Length'] = best_hit['length'] if best_hit else ''
-                    row['Translation Length'] = len(row['Translation']) if row['Translation'] else ''
-                    row['Reference Length'] = best_hit['slen'] if best_hit else ''
-
-                    # Clean up the temporary file
-                    Path(temp_fasta_name).unlink()
-
-                results.append(row)
-
-        with open(final_csv_file, 'w', newline='') as csvfile:
-            fieldnames = ["Locus", "Gene", "Locus Tag", "Product", "Protein ID", "Translation", "Nucleotide Sequence",
-                          "Best BLAST Identity", "Alignment Length", "Translation Length", "Reference Length"]
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            for result in results:
-                writer.writerow(result)
+        # Convert results back to DataFrame and save
+        result_df = pd.DataFrame(results)
+        result_df.to_csv(final_csv_file, index=False)
         logging.info(f"Created final CSV file: {final_csv_file}")
+
+    def process_row(self, row, proteins_faa):
+        if row['Translation']:
+            with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix=".fasta") as temp_fasta:
+                temp_fasta.write(f">{row['Locus Tag']} {row['Product']}~~~{row['Gene']}\n{row['Translation']}\n")
+                temp_fasta_name = temp_fasta.name
+
+            output_filename = f"{row['Locus']}_{row['Gene']}_{row['Locus Tag']}_blast_output.txt"
+            temp_output_file = self.results_folder / output_filename
+            self.run_blast(temp_fasta_name, temp_output_file)
+            best_hit = self.analyze_blast_results(temp_output_file)
+
+            row['Best BLAST Identity'] = best_hit['pident'] if best_hit else ''
+            row['Alignment Length'] = best_hit['length'] if best_hit else ''
+            row['Query Length'] = best_hit['qlen'] if best_hit else ''
+            row['Subject Length'] = best_hit['slen'] if best_hit else ''
+            row['Query Start'] = best_hit['qstart'] if best_hit else ''
+            row['Query End'] = best_hit['qend'] if best_hit else ''
+            row['Subject Start'] = best_hit['sstart'] if best_hit else ''
+            row['Subject End'] = best_hit['send'] if best_hit else ''
+
+            # Clean up the temporary file
+            Path(temp_fasta_name).unlink()
+
+        return row
 
 
 class TypeAnalysis:
@@ -324,7 +383,13 @@ class TypeAnalysis:
         self.proteins_faa = proteins_faa
         self.number_of_genes = self.calculate_number_of_genes()
         self.total_protein_length = self.calculate_total_protein_length()
-        self.type_hierarchy = ['None', 'Low', 'Good', 'High', 'Very high', 'Perfect']
+        self.type_hierarchy = ['Very low', 'Low', 'Good', 'High', 'Very High', 'Perfect']
+        # Updated locus types to include all systems
+        self.locus_types = [
+            'capsule', 'cellulose', 'lps', 'sorbitol',
+            'flag_i', 'flag_ii', 'flag_iii', 'flag_iv',
+            't3ss_i', 't3ss_ii', 't6ss_i', 't6ss_ii'
+        ]
 
     def calculate_number_of_genes(self):
         """
@@ -344,19 +409,50 @@ class TypeAnalysis:
                     total_length += len(line.strip())
         return total_length
 
+    # def analyze_locus(self):
+    #     """
+    #     Analyze the loci by calculating the translation and reference coverage and determining presence/absence.
+    #     """
+    #     df = pd.read_csv(self.input_csv)
+    #     df['Translation Coverage'] = df['Alignment Length'] / df['Translation Length']
+    #     df['Reference Coverage'] = df['Alignment Length'] / df['Reference Length']
+    #     df['Presence/Absence'] = ((df['Best BLAST Identity'] >= 95) &
+    #                               (df['Translation Coverage'] >= 0.9) &
+    #                               (df['Reference Coverage'] >= 0.9)).astype(int)
+    #     df['Truncated'] = ((df['Best BLAST Identity'] >= 95) &
+    #                        (df['Translation Coverage'] < 0.9) &
+    #                        ((df['Translation Coverage'] + df['Reference Coverage']) > 0.05)).astype(int)
+    #     df.to_csv(self.output_csv, index=False)
+    #     return df
+
     def analyze_locus(self):
-        """
-        Analyze the loci by calculating the translation and reference coverage and determining presence/absence.
-        """
         df = pd.read_csv(self.input_csv)
-        df['Translation Coverage'] = df['Alignment Length'] / df['Translation Length']
-        df['Reference Coverage'] = df['Alignment Length'] / df['Reference Length']
+        df['Query Coverage'] = df['Alignment Length'] / df['Query Length']
+        df['Subject Coverage'] = df['Alignment Length'] / df['Subject Length']
+        df['Length Ratio'] = df['Query Length'] / df['Subject Length']
+
         df['Presence/Absence'] = ((df['Best BLAST Identity'] >= 95) &
-                                  (df['Translation Coverage'] >= 0.9) &
-                                  (df['Reference Coverage'] >= 0.9)).astype(int)
+                                  (df['Query Coverage'] >= 0.9) &
+                                  (df['Subject Coverage'] >= 0.9) &
+                                  (df['Length Ratio'] >= 0.9) &
+                                  (df['Length Ratio'] <= 1.1)).astype(int)
+
+        df['Significantly Different'] = ((df['Best BLAST Identity'] < 99.5) |
+                                         (df['Query Coverage'] < 0.99) |
+                                         (df['Subject Coverage'] < 0.99) |
+                                         (df['Length Ratio'] < 0.95) |
+                                         (df['Length Ratio'] > 1.05)).astype(int)
+
         df['Truncated'] = ((df['Best BLAST Identity'] >= 95) &
-                           (df['Translation Coverage'] < 0.9) &
-                           ((df['Translation Coverage'] + df['Reference Coverage']) > 0.05)).astype(int)
+                           (df['Query Coverage'] < 0.9) &
+                           ((df['Query Coverage'] + df['Subject Coverage']) > 0.05) &
+                           (df['Length Ratio'] < 0.9)).astype(int)
+
+        df['Flagged Genes'] = df.apply(
+            lambda row: row['Gene'] if row['Significantly Different'] else '',
+            axis=1
+        )
+
         df.to_csv(self.output_csv, index=False)
         return df
 
@@ -378,75 +474,253 @@ class TypeAnalysis:
         """
         Calculate the coverage of the locus.
         """
-        total_alignment_length = group['Alignment Length'].sum()
-        return total_alignment_length / group['Translation Length'].sum()
+        total_query_coverage = group['Query Coverage'].sum()
+        total_subject_coverage = group['Subject Coverage'].sum()
+        return (total_query_coverage + total_subject_coverage) / 2
 
-    def assign_type(self, df):
+    # def assign_type(self, df):
+    #     """
+    #     Assign a type to each locus based on the analysis.
+    #     """
+    #     report = []
+    #     grouped = df.groupby('Locus')
+    #
+    #     for locus, group in grouped:
+    #         total_genes = group.shape[0]
+    #         present_genes = group['Presence/Absence'].sum()
+    #         truncated_genes = self.count_truncated_genes(group)
+    #         extra_genes = self.count_extra_genes(group)
+    #         locus_coverage = self.calculate_locus_coverage(group)
+    #
+    #         type_assigned = self.determine_type(present_genes, truncated_genes, extra_genes, locus_coverage)
+    #
+    #         report.append({
+    #             'Locus': locus,
+    #             'Total Genes': total_genes,
+    #             'Present Genes': present_genes,
+    #             'Truncated Genes': truncated_genes,
+    #             'Extra Genes': extra_genes,
+    #             'Locus Coverage': round(locus_coverage, 2),
+    #             'Type': type_assigned
+    #         })
+    #
+    #     type_report = pd.DataFrame(report)
+    #     final_type_locus, final_type = self.select_best_type(type_report)
+    #     return type_report, final_type_locus, final_type
+
+    def assign_type(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, str, str, str, Dict[str, str]]:
+        try:
+            if df.empty:
+                logging.warning("Input DataFrame is empty")
+                return pd.DataFrame(), '', '', '', {}
+
+            report = []
+            # Initialize results dictionary with all locus types
+            locus_results = {locus_type: {'type': 'Very low', 'locus': '', 'flagged_genes': []}
+                           for locus_type in self.locus_types}
+
+            for locus, group in df.groupby('Locus'):
+                total_genes = group.shape[0]
+                present_genes = group['Presence/Absence'].sum()
+                truncated_genes = self.count_truncated_genes(group)
+                extra_genes = self.count_extra_genes(group)
+                locus_coverage = self.calculate_locus_coverage(group)
+
+                flagged_genes = group[group['Flagged Genes'] != '']['Flagged Genes'].tolist()
+                flagged_genes = list(
+                    set([gene.strip() for genes in flagged_genes for gene in genes.split(',') if gene.strip()]))
+
+                type_assigned = self.determine_type(present_genes, truncated_genes, extra_genes, locus_coverage,
+                                                    flagged_genes)
+
+                report.append({
+                    'Locus': locus,
+                    'Total Genes': total_genes,
+                    'Present Genes': present_genes,
+                    'Truncated Genes': truncated_genes,
+                    'Extra Genes': extra_genes,
+                    'Locus Coverage': round(locus_coverage, 2),
+                    'Type': type_assigned,
+                    'Flagged Genes': ', '.join(flagged_genes) if flagged_genes else ''
+                })
+
+                locus_type = self.determine_locus_type(str(locus))
+                if locus_type:
+                    if self.type_hierarchy.index(type_assigned) > self.type_hierarchy.index(
+                            locus_results[locus_type]['type']):
+                        locus_results[locus_type] = {
+                            'type': type_assigned,
+                            'locus': locus,
+                            'flagged_genes': flagged_genes
+                        }
+
+            type_report = pd.DataFrame(report)
+
+            # Select the best locus based on type
+            best_locus = max(report, key=lambda x: self.type_hierarchy.index(x['Type']))
+            final_type_locus = best_locus['Locus']
+            final_type = best_locus['Type']
+            flagged_genes_str = best_locus['Flagged Genes']
+
+            # Format the locus information for each locus type
+            formatted_locus_info = {}
+            for locus_type in self.locus_types:
+                result = locus_results[locus_type]
+                locus = result['locus']
+                type_assigned = result['type']
+                flagged_genes = result['flagged_genes']
+
+                if locus:
+                    formatted_info = f"{locus} ({type_assigned})"
+                    if flagged_genes:
+                        formatted_info += f" - Flagged genes: {', '.join(sorted(flagged_genes))}"
+                else:
+                    formatted_info = f"({type_assigned})"
+
+                formatted_locus_info[f"{locus_type}_locus"] = formatted_info
+
+            logging.info(f"Locus results: {locus_results}")
+            logging.info(
+                f"Returning from assign_type: {type_report}, {final_type_locus}, {final_type}, {flagged_genes_str}, {formatted_locus_info}")
+
+            return type_report, final_type_locus, final_type, flagged_genes_str, formatted_locus_info
+
+        except Exception as e:
+            logging.error(f"Error in assign_type: {str(e)}")
+            logging.error(f"DataFrame info:\n{df.info()}")
+            logging.error(f"DataFrame head:\n{df.head()}")
+            logging.error(f"Type hierarchy: {self.type_hierarchy}")
+
+            # Create a complete default result dictionary with all locus types
+            default_results = {f"{locus_type}_locus": "None" for locus_type in self.locus_types}
+            return pd.DataFrame(), '', '', '', default_results
+
+    def determine_locus_type(self, locus: str) -> str:
         """
-        Assign a type to each locus based on the analysis.
+        Determine the type of locus based on folder name or locus prefix.
         """
-        report = []
-        grouped = df.groupby('Locus')
+        # First check for direct folder name matches
+        folder_mappings = {
+            'types_flag_I': 'flag_i',
+            'types_flag_II': 'flag_ii',
+            'types_flag_III': 'flag_iii',
+            'types_flag_IV': 'flag_iv',
+            'types_T3SS_I': 't3ss_i',
+            'types_T3SS_II': 't3ss_ii',
+            'types_T6SS_I': 't6ss_i',
+            'types_T6SS_II': 't6ss_ii',
+            'types_capsule': 'capsule',
+            'types_cellulose': 'cellulose',
+            'types_lps': 'lps',
+            'types_srl': 'sorbitol'
+        }
 
-        for locus, group in grouped:
-            total_genes = group.shape[0]
-            present_genes = group['Presence/Absence'].sum()
-            truncated_genes = self.count_truncated_genes(group)
-            extra_genes = self.count_extra_genes(group)
-            locus_coverage = self.calculate_locus_coverage(group)
+        # Check for folder name match first
+        if str(locus) in folder_mappings:
+            return folder_mappings[str(locus)]
 
-            type_assigned = self.determine_type(present_genes, truncated_genes, extra_genes, locus_coverage)
+        # Then check for locus ID prefixes
+        locus_prefixes = {
+            'FLI': 'flag_i',
+            'FLII': 'flag_ii',
+            'FLIII': 'flag_iii',
+            'FLIV': 'flag_iv',
+            'TTI': 't3ss_i',
+            'TTII': 't3ss_ii',
+            'TFI': 't6ss_i',
+            'TFII': 't6ss_ii',
+            'KL': 'capsule',
+            'CL': 'cellulose',
+            'OL': 'lps',
+            'SR': 'sorbitol'
+        }
 
-            report.append({
-                'Locus': locus,
-                'Total Genes': total_genes,
-                'Present Genes': present_genes,
-                'Truncated Genes': truncated_genes,
-                'Extra Genes': extra_genes,
-                'Locus Coverage': round(locus_coverage, 2),
-                'Type': type_assigned
-            })
+        locus_str = str(locus).upper()
+        for prefix, locus_type in locus_prefixes.items():
+            if locus_str.startswith(prefix):
+                return locus_type
+        return ''
 
-        type_report = pd.DataFrame(report)
-        final_type_locus, final_type = self.select_best_type(type_report)
-        return type_report, final_type_locus, final_type
+    # def determine_type(self, present_genes, truncated_genes, extra_genes, locus_coverage):
+    #     """
+    #     Determine the type of a locus based on various criteria.
+    #     """
+    #     if present_genes + truncated_genes == self.number_of_genes:
+    #         if present_genes == self.number_of_genes:
+    #             if truncated_genes == 0 and extra_genes == 0:
+    #                 if locus_coverage >= 0.99:
+    #                     return 'Perfect'
+    #         if truncated_genes == 0 and extra_genes == 0:
+    #             if locus_coverage >= 0.99:
+    #                 return 'Very high'
+    #         if truncated_genes <= 3 and extra_genes == 0:
+    #             if locus_coverage >= 0.99:
+    #                 return 'High'
+    #         if truncated_genes <= 3 and extra_genes <= 1:
+    #             if locus_coverage >= 0.95:
+    #                 return 'Good'
+    #         if truncated_genes <= 3 and extra_genes <= 2:
+    #             if locus_coverage >= 0.90:
+    #                 return 'Low'
+    #     else:
+    #         if locus_coverage >= 0.95 and truncated_genes <= 3 and extra_genes <= 1:
+    #             return 'Good'
+    #         elif locus_coverage >= 0.90 and truncated_genes <= 3 and extra_genes <= 2:
+    #             return 'Low'
+    #     return 'None'
 
-    def determine_type(self, present_genes, truncated_genes, extra_genes, locus_coverage):
-        """
-        Determine the type of a locus based on various criteria.
-        """
-        if present_genes + truncated_genes == self.number_of_genes:
-            if present_genes == self.number_of_genes:
-                if truncated_genes == 0 and extra_genes == 0:
-                    if locus_coverage >= 0.99:
-                        return 'Perfect'
-            if truncated_genes == 0 and extra_genes == 0:
-                if locus_coverage >= 0.99:
-                    return 'Very high'
-            if truncated_genes <= 3 and extra_genes == 0:
-                if locus_coverage >= 0.99:
-                    return 'High'
-            if truncated_genes <= 3 and extra_genes <= 1:
-                if locus_coverage >= 0.95:
-                    return 'Good'
-            if truncated_genes <= 3 and extra_genes <= 2:
-                if locus_coverage >= 0.90:
-                    return 'Low'
-        else:
-            if locus_coverage >= 0.95 and truncated_genes <= 3 and extra_genes <= 1:
+    def determine_type(self, present_genes, truncated_genes, extra_genes, locus_coverage, different_genes):
+        if not different_genes and present_genes == self.number_of_genes and truncated_genes == 0 and extra_genes == 0 and locus_coverage >= 0.99:
+            return 'Perfect'
+
+        num_different_genes = len(different_genes)
+
+        if num_different_genes == 0:
+            if locus_coverage >= 0.99:
+                return 'Very High'
+            elif locus_coverage >= 0.95:
+                return 'High'
+        elif num_different_genes == 1:
+            if locus_coverage >= 0.95:
+                return 'High'
+            elif locus_coverage >= 0.90:
                 return 'Good'
-            elif locus_coverage >= 0.90 and truncated_genes <= 3 and extra_genes <= 2:
+        elif num_different_genes == 2:
+            if locus_coverage >= 0.90:
+                return 'Good'
+            elif locus_coverage >= 0.85:
                 return 'Low'
-        return 'None'
+        elif num_different_genes == 3:
+            if locus_coverage >= 0.85:
+                return 'Low'
+            else:
+                return 'Very low'
+        else:  # 4 or more different genes
+            return 'Very low'
+
+        # If we've reached here, it means we have some missing or truncated genes
+        if locus_coverage >= 0.85:
+            return 'Low'
+        return 'Very low'
+
+    # def select_best_type(self, type_report):
+    #     """
+    #     Select the best type from the type report based on the hierarchy.
+    #     """
+    #     highest_priority_type = 'None'
+    #     highest_priority_locus = ''
+    #     for idx, row in type_report.iterrows():
+    #         if self.type_hierarchy.index(row['Type']) > self.type_hierarchy.index(highest_priority_type):
+    #             highest_priority_type = row['Type']
+    #             highest_priority_locus = row['Locus']
+    #     return highest_priority_locus, highest_priority_type
 
     def select_best_type(self, type_report):
-        """
-        Select the best type from the type report based on the hierarchy.
-        """
+        type_hierarchy = ['None', 'Low', 'Good', 'High', 'Very High', 'Perfect']
         highest_priority_type = 'None'
         highest_priority_locus = ''
         for idx, row in type_report.iterrows():
-            if self.type_hierarchy.index(row['Type']) > self.type_hierarchy.index(highest_priority_type):
+            if type_hierarchy.index(row['Type']) > type_hierarchy.index(highest_priority_type):
                 highest_priority_type = row['Type']
                 highest_priority_locus = row['Locus']
         return highest_priority_locus, highest_priority_type

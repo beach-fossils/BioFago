@@ -111,28 +111,30 @@ class OptimizedLocalANIExecutor:
         self.best_match = {'species': 'Unknown', 'ani': 0.0}
 
     def run_pyani_docker(self):
-        logging.info("Running ANI analysis using Docker...")
-        if self.output_dir.exists():
-            shutil.rmtree(self.output_dir)
-        time.sleep(1)
-
-        base_dir = self.input_dir.parent.absolute()
-        genome_folder_name = self.single_sequence_path.parent.name
-        docker_command = (
-            f"docker run --rm --platform linux/amd64 -v {base_dir}:/host_dir "
-            f"leightonpritchard/average_nucleotide_identity:v0.2.9 "
-            f"-i /host_dir/{genome_folder_name} -o /host_dir/output -m ANIm -g --gformat eps"
-        )
-
-        try:
-            process = subprocess.run(docker_command, shell=True, capture_output=True, text=True, check=True)
-            logging.info("Docker ANI calculation completed successfully.")
-            return True
-        except subprocess.CalledProcessError as e:
-            logging.error(f"Failed to run docker command: {e.stderr}")
-        except Exception as e:
-            logging.error(f"Exception during Docker execution: {e}")
-        return False
+        # logging.info("Running ANI analysis using Docker...")
+        # if self.output_dir.exists():
+        #     shutil.rmtree(self.output_dir)
+        # time.sleep(1)
+        #
+        # base_dir = self.input_dir.parent.absolute()
+        # genome_folder_name = self.single_sequence_path.parent.name
+        # docker_command = (
+        #     f"docker run --rm --platform linux/amd64 -v {base_dir}:/host_dir "
+        #     f"leightonpritchard/average_nucleotide_identity:v0.2.9 "
+        #     f"-i /host_dir/{genome_folder_name} -o /host_dir/output -m ANIm -g --gformat eps"
+        # )
+        #
+        # try:
+        #     process = subprocess.run(docker_command, shell=True, capture_output=True, text=True, check=True)
+        #     logging.info("Docker ANI calculation completed successfully.")
+        #     return True
+        # except subprocess.CalledProcessError as e:
+        #     logging.error(f"Failed to run docker command: {e.stderr}")
+        # except Exception as e:
+        #     logging.error(f"Exception during Docker execution: {e}")
+        # return False
+        logging.info("Skipping ANI analysis using Docker as requested.")
+        return True  # Always return True to continue with the process
 
     def process_output(self, reference_genome):
         results_path = self.output_dir / 'ANIm_percentage_identity.tab'

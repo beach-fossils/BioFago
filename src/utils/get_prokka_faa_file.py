@@ -14,6 +14,6 @@ def get_prokka_faa_file(prokka_output_folder):
     return None
 
 if __name__ == "__main__":
-    path = '/Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/cellulose/test_1/prokka/PRR1_INIAV_Contig_2_consensus_sequence_extracted_sequence'
+    path = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T6SS/cluster_1/extracted_seq'
 
     print(get_prokka_faa_file(path)) # Expected: /Users/josediogomoura/Documents/BioFago/BioFago/data/assign_types/cellulose/test_1/prokka/PRR1_INIAV_Contig_2_consensus_sequence_extracted_sequence/PROKKA_09232021.faa
