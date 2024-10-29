@@ -17,9 +17,9 @@ BioFago provides researchers and plant pathologists with a powerful platform for
 
 ## Installation
 
-1. Clone the repository (dev branch):
+1. Clone the repository:
    ```bash
-   git clone -b dev https://github.com/beach-fossils/BioFago.git
+   git clone https://github.com/beach-fossils/BioFago.git
    cd BioFago
    ```
 
@@ -73,7 +73,7 @@ BioFago provides researchers and plant pathologists with a powerful platform for
    
    This script will check if BLAST is already installed and at the correct version. If not, it will attempt to install or update BLAST.
 
-   Note: The script requires sudo privileges on Linux systems and Homebrew on macOS. If you encounter any issues, please refer to the [BLAST manual installation instructions](https://www.ncbi.nlm.nih.gov/books/NBK279671/).
+   Note: The script requires sudo privileges on Linux systems and Homebrew on macOS. Also, if you are running this on Windows you should use Git Bash or WSL to execute the following commands since Windows CMD or PowerShell does not support `chmod`. If you encounter any issues, please refer to the [BLAST manual installation instructions](https://www.ncbi.nlm.nih.gov/books/NBK279671/).
    
    ```bash
      chmod +x external/blast/install_blast.sh
@@ -89,7 +89,7 @@ Follow the [official Docker installation guide](https://docs.docker.com/get-dock
 
 ## Docker Images
 
-The development made until now relies on two Docker images for some of its functionality. Before running the tool, make sure to pull these images:
+The development that has been made until now relies on two Docker images for some of its functionality. Before running the tool, make sure to pull these images:
 
 1. Prokka (for genome annotation):
    ```bash
@@ -103,27 +103,55 @@ The development made until now relies on two Docker images for some of its funct
 
 
 
-## Configuration
-
-1. Edit `config.yaml` to match your environment and requirements:
-
-   ```yaml
-   genomes_folder: "/path/to/your/genomes/folder"  # Mandatory: specify the folder containing your genome files
-   keep_sequence_loci: false  # Optional: set to true to retain sequences for each analyzed locus
-   threshold_species: 0.95  # Optional: ANI threshold for species assignment using Pyani
-   log_level: "INFO"  # Optional: set logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-   
-
-*Note: The output folder is automatically created at the same level as the `genomes_folder`. It is named `species_finder`.*
-
-
 ## Usage
 
-   ```bash
-  python src/biofago_runner.py
-   ```
+You can run BioFago_Erwinia using command-line arguments or by editing the `config.yaml` file.
 
-This command will process all genomes in the specified genomes_folder and output results to the automatically created `species_finder` folder.
+
+### Using Command-Line Arguments
+
+Run the tool with command-line arguments to override the settings in `config.yaml`:
+
+
+Available options:
+
+```
+--genomes_folder: Specify the folder containing your genome files (mandatory)
+--keep_sequence_loci: Flag it to retain sequences for each analysed locus, will be save inside each genomes folder (optional)
+--threshold_species: Set the ANI threshold for species assignment (optional, default: 0.95)
+--log_level: Set logging verbosity (optional, choices: DEBUG, INFO, WARNING, ERROR, CRITICAL)
+```
+
+
+*Example:*
+
+```bash
+python biofago_runner.py --genomes_folder /path/to/genomes --keep_sequence_loci
+```
+
+
+### Using config.yaml
+Alternatively, you can edit config.yaml to set your preferences:
+
+```yaml
+genomes_folder: '/path/to/genomes'
+keep_sequence_loci: true
+threshold_species: 0.95
+log_level: 'INFO'
+```
+
+and then run the tool without arguments:
+```bash
+python biofago_runner.py
+```
+
+*Note_1: Command-line arguments will override the corresponding settings in `config.yaml`.*
+
+
+*Note_2: The output folder is automatically created at the same level as the `genomes_folder`. It is named `species_finder`.*
+
+
+
 
 ### Output Structure
 After running the tool, you can expect the following output structure:
