@@ -4,7 +4,6 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor
 from typing import List, Dict, Optional
 import multiprocessing
 from functools import partial
@@ -28,7 +27,7 @@ from utils.folder_csv_manager import (
     create_species_finder_folder,
     cleanup_unwanted_species_folders
 )
-from utils.genome_processing import process_single_genome, write_results_to_csv, keep_loci_files
+from utils.genome_processing import process_single_genome, write_results_to_csv, keep_loci_files, process_genomes
 from utils.clade_assigner import CRISPRCladeClassifier, parse_spacer_counts
 
 
@@ -173,13 +172,20 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
                     clade_classifier: CRISPRCladeClassifier) -> List[Dict]:
     final_results = []
     processed_genomes = set()
+
     logging.info(f"Starting process_results with {len(results)} results")
-
     for result in results:
-        if result and result['name'] not in processed_genomes:
-            genome_name = result['name']
-            processed_genomes.add(genome_name)
+        if not result:
+            continue
 
+        genome_name = result.get('name')
+        if not genome_name or genome_name in processed_genomes:
+            continue
+
+        logging.info(f"Processing results for genome: {genome_name}")
+        processed_genomes.add(genome_name)
+
+        try:
             # Process species information
             species_csv = species_finder_path / f"{genome_name}.csv"
             if species_csv.exists():
@@ -187,62 +193,46 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
                     df = pd.read_csv(species_csv)
                     result.update({
                         'species': df['Species'].iloc[0] if 'Species' in df.columns else 'Unknown',
-                        'ANI_species': round(df['ANI'].iloc[0], 2) if 'ANI' in df.columns else 0.0,
+                        'ANI_species': round(float(df['ANI'].iloc[0]), 2) if 'ANI' in df.columns else 0.0,
                     })
-                    species_csv.unlink()
                 except Exception as e:
                     logging.error(f"Error reading species CSV for {genome_name}: {str(e)}")
                     result.update({'species': 'Unknown', 'ANI_species': 0.0})
+            else:
+                result.update({'species': 'Unknown', 'ANI_species': 0.0})
 
-            # Initialize all locus types with unknown status
-            locus_types = [
-                'capsule', 'cellulose', 'lps', 'sorbitol',
-                'flag_i', 'flag_ii', 'flag_iii', 'flag_iv',
-                't3ss_i', 't3ss_ii', 't6ss_i', 't6ss_ii'
-            ]
-
-            for locus_type in locus_types:
+            # Initialize locus fields
+            for locus_type in ['capsule', 'cellulose', 'lps', 'sorbitol',
+                               'flag_i', 'flag_ii', 'flag_iii', 'flag_iv',
+                               't3ss_i', 't3ss_ii', 't6ss_i', 't6ss_ii']:
                 result[f'{locus_type}_locus'] = '(Unknown)'
 
-            # Process locus information from extract_annotate_results
-            locus_types_mapping = {
-                'types_capsule': 'capsule_locus',
-                'types_cellulose': 'cellulose_locus',
-                'types_lps': 'lps_locus',
-                'types_srl': 'sorbitol_locus',
-                'types_flag_I': 'flag_i_locus',
-                'types_flag_II': 'flag_ii_locus',
-                'types_flag_III': 'flag_iii_locus',
-                'types_flag_IV': 'flag_iv_locus',
-                'types_T3SS_I': 't3ss_i_locus',
-                'types_T3SS_II': 't3ss_ii_locus',
-                'types_T6SS_I': 't6ss_i_locus',
-                'types_T6SS_II': 't6ss_ii_locus'
-            }
-
+            # Process annotation results
+            annotation_map = {}
             for annotation_result in extract_annotate_results:
                 if len(annotation_result) == 6:
-                    annotation_genome, reference_type, final_type_locus, final_type, flagged_genes, _ = annotation_result
-                    if annotation_genome == result['name']:
-                        locus_key = locus_types_mapping.get(reference_type)
+                    ann_genome, ref_type, type_locus, final_type, flagged_genes, _ = annotation_result
+                    if ann_genome == genome_name:
+                        locus_key = {
+                            'types_capsule': 'capsule_locus',
+                            'types_cellulose': 'cellulose_locus',
+                            'types_lps': 'lps_locus',
+                            'types_srl': 'sorbitol_locus',
+                            'types_flag_I': 'flag_i_locus',
+                            'types_flag_II': 'flag_ii_locus',
+                            'types_flag_III': 'flag_iii_locus',
+                            'types_flag_IV': 'flag_iv_locus',
+                            'types_T3SS_I': 't3ss_i_locus',
+                            'types_T3SS_II': 't3ss_ii_locus',
+                            'types_T6SS_I': 't6ss_i_locus',
+                            'types_T6SS_II': 't6ss_ii_locus'
+                        }.get(ref_type)
+
                         if locus_key:
-                            if final_type_locus:
-                                formatted_locus = f"{final_type_locus} ({final_type})"
-                            else:
-                                formatted_locus = f"({final_type})"
+                            formatted_locus = f"{type_locus} ({final_type})" if type_locus else f"({final_type})"
                             if flagged_genes:
                                 formatted_locus += f" - Flagged genes: {flagged_genes}"
                             result[locus_key] = formatted_locus.strip()
-
-            # Process other information (plasmids, CRISPR, etc.)
-            if 'present_plasmids' not in result:
-                result['present_plasmids'] = 'None'
-
-            # Process virulence genes
-            virulence_columns = [col for col in result if col.endswith('_genes')]
-            for col in virulence_columns:
-                if result[col] != 'None':
-                    result[col] = ', '.join(sorted(result[col].split(', ')))
 
             # Process CRISPR clade classification
             genotype = result.get('crispr_genotype', '')
@@ -250,7 +240,6 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
             spacer_counts = parse_spacer_counts(spacers)
             clade, score, spacer_score, genotype_score, confidence_level, subgroup = clade_classifier.determine_clade(
                 genotype, spacer_counts)
-
             result.update({
                 'clade': f"{clade} {subgroup}".strip() if clade != "Unknown" else clade,
                 'clade_confidence_score': round(score, 2),
@@ -258,9 +247,14 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
             })
 
             final_results.append(result)
-            logging.info(f"Added result for {genome_name} to final_results")
+            logging.info(f"Successfully processed genome {genome_name} with clade {clade}")
 
-    logging.info(f"Finished process_results. Final results count: {len(final_results)}")
+        except Exception as e:
+            logging.error(f"Error processing genome {genome_name}: {str(e)}")
+
+    logging.info(f"Successfully processed {len(final_results)} genomes with clades:")
+    for result in final_results:
+        logging.info(f"Genome: {result['name']}, Clade: {result['clade']}")
     return final_results
 
 
@@ -290,19 +284,17 @@ def clean_crispr_info(result: Dict) -> None:
 
 def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, threshold_species: float,
                                  keep_sequence_loci: bool) -> None:
-    """Main function to run species and types finder analysis."""
-    logging.info(f"Starting analysis for genomes in {genomes_folder}")
-    logging.info(f"Output directory: {output_dir}")
-
     try:
         species_finder_path = create_species_finder_folder(output_dir)
 
-        genome_files = list(genomes_folder.glob('*.fasta'))
+        # Get and validate genome files
+        genome_files = sorted([f for f in genomes_folder.glob('*.fasta') if f.is_file()])
         if not genome_files:
             raise ValueError(f"No FASTA files found in {genomes_folder}")
 
-        logging.info(f"Found genome files: {genome_files}")
+        logging.info(f"Found {len(genome_files)} genome files: {[f.name for f in genome_files]}")
 
+        # Run species metrics analysis
         logging.info("Starting species metrics analysis")
         run_species_metrics_for_all(genomes_folder, species_finder_path, threshold_species)
         logging.info("Completed species metrics analysis")
@@ -310,44 +302,40 @@ def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, thresho
         # Initialize the CRISPRCladeClassifier
         clade_classifier = CRISPRCladeClassifier(matrix_path)
 
-        with ProcessPoolExecutor() as executor:
-            # Create a list of tuples (genome_file, clade_classifier)
-            genome_classifier_pairs = [(genome_file, clade_classifier) for genome_file in genome_files]
-            results = list(executor.map(process_genome_with_classifier, genome_classifier_pairs))
+        # Process all genomes and collect results
+        logging.info("Starting genome processing")
+        all_results = process_genomes(genome_files, clade_classifier)
+        logging.info(f"Completed genome processing. Got {len(all_results)} results")
 
-        logging.info(f"Processed {len(results)} genomes")
-        logging.info(f"Results preview: {results[:2]}")  # Log first two results for debugging
-
+        # Get annotation results
         extract_annotate_results = extract_annotate_assign(genomes_folder)
-        logging.info(f"Extract and annotate results: {extract_annotate_results}")
+        logging.info(f"Obtained {len(extract_annotate_results)} annotation results")
 
-        final_results = process_results(results, species_finder_path, extract_annotate_results, clade_classifier)
+        # Process final results
+        final_results = process_results(all_results, species_finder_path, extract_annotate_results, clade_classifier)
 
         if final_results:
             output_csv = species_finder_path / "all_results.csv"
             write_results_to_csv(final_results, output_csv)
-            logging.info(f"Final results written to {output_csv}")
-        else:
-            logging.error("No genomes were processed successfully.")
+            logging.info(f"Wrote {len(final_results)} results to {output_csv}")
 
-        logging.info("Cleaning up analysis folders...")
-        logging.info(f"Contents of output directory before cleanup: {list(output_dir.glob('*'))}")
+            # Verify all genomes were processed
+            processed_genomes = {r['name'] for r in final_results}
+            for genome_file in genome_files:
+                if genome_file.stem not in processed_genomes:
+                    logging.warning(f"Missing results for genome: {genome_file.stem}")
+        else:
+            logging.error("No results to write to CSV")
+
+        # Cleanup and finalize
         if keep_sequence_loci:
             keep_loci_files(output_dir)
-            logging.info("Kept loci files as requested.")
         else:
             cleanup_analysis_folders(output_dir, keep_sequence_loci)
-        logging.info(f"Contents of output directory after cleanup: {list(output_dir.glob('*'))}")
-
-        logging.info("Analysis completed successfully.")
-
 
     except Exception as e:
-
         logging.error(f"Error in run_species_and_types_finder: {str(e)}")
-
         logging.exception("Exception details:")
-
         raise
 
 
@@ -385,6 +373,7 @@ def copy_final_results(temp_dir: Path, output_dir: Path, keep_sequence_loci: boo
         for root, dirs, files in os.walk(types_finder_output):
             for file in files:
                 logging.info(f"  {os.path.join(root, file)}")
+
 
 def process_genome_with_classifier(args):
     genome_file, clade_classifier = args

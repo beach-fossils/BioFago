@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import shutil
 from dataclasses import dataclass, asdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
 
 import pandas as pd
 from Bio import SeqIO
@@ -51,27 +52,35 @@ def setup_logging():
 
 def process_genomes(genome_files: List[Path], clade_classifier: CRISPRCladeClassifier, max_workers: int = 4) -> List[
     Dict]:
-    processed = set()
-    results = []
+    processed_results = []
+    futures = []
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_genome = {
-            executor.submit(process_single_genome, genome, clade_classifier): genome
-            for genome in genome_files
-            if genome.stem not in processed
-        }
+    # Use ProcessPoolExecutor instead of ThreadPoolExecutor for CPU-bound tasks
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all jobs
+        for genome_file in genome_files:
+            future = executor.submit(process_single_genome, genome_file, clade_classifier)
+            futures.append((future, genome_file))
 
-        for future in as_completed(future_to_genome):
-            genome = future_to_genome[future]
+        # Wait for all futures to complete
+        for future, genome_file in futures:
             try:
                 result = future.result()
                 if result:
-                    results.append(result)
-                    processed.add(genome.stem)
+                    logging.info(f"Successfully processed genome: {genome_file.stem}")
+                    processed_results.append(result)
+                else:
+                    logging.error(f"Failed to process genome: {genome_file.stem}")
             except Exception as e:
-                logging.error(f"Exception occurred while processing {genome}: {str(e)}")
+                logging.error(f"Exception processing genome {genome_file}: {str(e)}")
 
-    return results
+    logging.info(f"Processed {len(processed_results)} out of {len(genome_files)} genomes")
+    if len(processed_results) < len(genome_files):
+        processed_names = {r['name'] for r in processed_results}
+        missing_names = [f.stem for f in genome_files if f.stem not in processed_names]
+        logging.warning(f"Missing results for genomes: {missing_names}")
+
+    return processed_results
 
 @contextlib.contextmanager
 def genome_lock(genome_file: Path):
@@ -88,31 +97,44 @@ def genome_lock(genome_file: Path):
 def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassifier) -> Optional[Dict]:
     with genome_lock(genome_file):
         try:
-            logging.info(f"Processing genome file: {genome_file}")
+            logging.info(f"Starting processing for genome file: {genome_file}")
 
+            # Generate assembly statistics
             fasta_stats = FastaStatistics(genome_file)
             stats = fasta_stats.generate_assembly_statistics()
+            logging.info(f"Generated stats for {genome_file.name}")
 
+            # Find plasmids
             plasmid_finder = PlasmidFinder()
             present_plasmids = plasmid_finder.run_blast_for_genome(genome_file)
-
             plasmid_info = ', '.join(sorted(present_plasmids)) if present_plasmids else 'None'
-            logging.info(f"Plasmids found for {genome_file.name}: {plasmid_info}")
+            logging.info(f"Found plasmids for {genome_file.name}: {plasmid_info}")
 
+            # Process resistance
             str_resistance = StrResistance()
             str_resistance.run_blast_for_genome(genome_file)
             str_result = str_resistance.get_results()
 
+            # Process virulence
             virulence_genes = VirulenceGenes()
             virulence_genes.run_blast_for_genome(genome_file)
             virulence_result = virulence_genes.get_results()
 
+            # CRISPR analysis
             crispr_output_dir = genome_file.parent / "CRISPR_finder"
-            crispr_analyzer = CRISPRAnalyzer(genome_file.parent, crispr_output_dir)
-            crispr_analyzer.run_analysis()
+            crispr_analyzer = CRISPRAnalyzer(genome_file.parent.resolve(), crispr_output_dir)
+
+            # Create genome-specific output directory
+            genome_output_dir = crispr_output_dir / "Results" / genome_file.stem
+            genome_output_dir.mkdir(parents=True, exist_ok=True)
+
+            crispr_analyzer.find_crispr_spacers(genome_file, genome_file.stem, genome_output_dir)
+
             crispr_summaries = crispr_analyzer.get_crispr_summary()
             crispr_info = crispr_summaries.get(genome_file.stem, "CRISPR: No results")
+            logging.info(f"CRISPR analysis complete for {genome_file.name}")
 
+            # Process CRR
             crr_finder = CRRFinder(genome_file, genome_file.parent)
             crr_finder.analyze_genome()
             crr_finder.process_directory()
@@ -123,6 +145,7 @@ def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassi
             clade, score, spacer_score, genotype_score, confidence_level, subgroup = clade_classifier.determine_clade(
                 crr_info, spacer_counts)
 
+            # Build result dictionary
             result = {
                 'name': stats['name'],
                 'contig_count': stats['contig_count'],
@@ -145,10 +168,12 @@ def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassi
             for cluster, genes in virulence_result.items():
                 result[f'{cluster}_genes'] = ', '.join(sorted(genes)) if genes else 'None'
 
+            logging.info(f"Successfully completed processing for {genome_file.name}")
             return result
 
         except Exception as e:
             logging.error(f"Error processing genome {genome_file.name}: {str(e)}")
+            logging.exception("Exception details:")
             return None
 
 def get_locus_info(genome_file: Path, locus_type: str) -> Optional[Tuple[str, str, str]]:
@@ -179,9 +204,13 @@ def get_locus_info(genome_file: Path, locus_type: str) -> Optional[Tuple[str, st
 
 def write_results_to_csv(results: List[Dict], output_path: Path) -> None:
     try:
-        logging.info(f"Starting write_results_to_csv with {len(results)} results")
-        df = pd.DataFrame(results)
+        if not results:
+            logging.error("No results to write to CSV")
+            return
 
+        logging.info(f"Writing {len(results)} results to CSV")
+
+        # Define column order
         base_columns = [
             'name', 'species', 'ANI_species', 'contig_count', 'N50_value',
             'largest_contig', 'largest_contig_size_bp', 'total_size_bp',
@@ -192,25 +221,41 @@ def write_results_to_csv(results: List[Dict], output_path: Path) -> None:
             't3ss_i_locus', 't3ss_ii_locus', 't6ss_i_locus', 't6ss_ii_locus',
             'clade', 'clade_confidence_score', 'clade_confidence_level'
         ]
-
-        # Define the virulence gene columns - only include 'other_genes'
         virulence_columns = ['other_genes']
-
-        # Combine base columns and remaining virulence columns
         all_columns = base_columns + virulence_columns
 
-        # Reindex the DataFrame with all columns, filling missing values with 'None'
+        # Create DataFrame and ensure all columns exist
+        df = pd.DataFrame(results)
+
+        # Verify all required columns exist
+        for column in all_columns:
+            if column not in df.columns:
+                logging.warning(f"Column {column} not found in results, adding with default value 'None'")
+                df[column] = 'None'
+
+        # Reorder columns and fill missing values
         df = df.reindex(columns=all_columns, fill_value='None')
 
-        logging.info(f"DataFrame shape before writing: {df.shape}")
+        # Log dataframe info before writing
+        logging.info(f"DataFrame shape: {df.shape}")
         logging.info(f"DataFrame columns: {df.columns.tolist()}")
-        df.to_csv(output_path, index=False)
-        logging.info(f"Final results written to {output_path}")
+        logging.info(f"Number of rows: {len(df)}")
 
-        verify_csv(output_path)
+        # Write to CSV
+        df.to_csv(output_path, index=False)
+
+        # Verify the written file
+        if output_path.exists():
+            written_df = pd.read_csv(output_path)
+            logging.info(f"Successfully wrote CSV with {len(written_df)} rows")
+            logging.info(f"Written CSV preview:\n{written_df['name'].tolist()}")
+        else:
+            logging.error("Failed to create CSV file")
+
     except Exception as e:
         logging.error(f"Error writing results to CSV: {str(e)}")
         logging.exception("Exception details:")
+        raise
 
 def verify_csv(output_path: Path) -> None:
     if output_path.exists():
