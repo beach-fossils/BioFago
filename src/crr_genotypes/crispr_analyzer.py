@@ -1,54 +1,69 @@
 import shutil
+import threading
 from io import TextIOWrapper
 from Bio import SeqIO
 import logging
 import time
 from pathlib import Path
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, TextIO
 from collections import defaultdict
 import os
 import multiprocessing
 
 class CRISPRAnalyzer:
-    _instances = {}  # Class variable to track instances
+    _instances = {}
+    _processed_genomes = set()
+    _global_lock = threading.Lock()
+    _logger = None
 
     def __new__(cls, input_dir: Path, output_dir: Path, batch_size: int = 20):
-        key = str(input_dir)
-        if key not in cls._instances:
-            cls._instances[key] = super(CRISPRAnalyzer, cls).__new__(cls)
-        return cls._instances[key]
+        key = str(Path(input_dir).resolve())
+        with cls._global_lock:
+            if key not in cls._instances:
+                instance = super(CRISPRAnalyzer, cls).__new__(cls)
+                instance._lock = threading.Lock()  # Instance-specific lock
+                cls._instances[key] = instance
+            return cls._instances[key]
 
     def __init__(self, input_dir: Path, output_dir: Path, batch_size: int = 20):
-        if not hasattr(self, '_initialized'):  # Only initialize once
-            self.input_dir = Path(input_dir)
-            self.output_dir = Path(output_dir) / "CRISPR_finder"
-            self.results_dir = self.output_dir / "Results"
-            self.crr_types = ["CRR1", "CRR2", "CRR4"]
-            self.batch_size = batch_size
-            self.setup_directories()
-            self.setup_logging()
-            self._initialized = True
+        with self._lock:
+            if not hasattr(self, '_initialized'):
+                self.input_dir = Path(input_dir).resolve()
+                self.output_dir = Path(output_dir).resolve()
+                self.results_dir = self.output_dir / "Results"  # Restore results_dir
+                self.crr_types = ["CRR1", "CRR2", "CRR4"]
+                self.batch_size = batch_size
+                self._results_cache = {}
+                self._initialized = True
+                self.setup_directories()
+                self.setup_logging()
+
 
     def setup_directories(self):
-        if not self.output_dir.exists():
+        """Setup directories with proper error handling"""
+        try:
+            # Create output directory if it doesn't exist
             self.output_dir.mkdir(parents=True, exist_ok=True)
-        if self.results_dir.exists():
-            shutil.rmtree(self.results_dir)
-        self.results_dir.mkdir(parents=True)
+            self.results_dir.mkdir(parents=True, exist_ok=True)
+
+        except Exception as e:
+            if CRISPRAnalyzer._logger:
+                CRISPRAnalyzer._logger.error(f"Error setting up directories: {str(e)}")
+            raise
 
     def setup_logging(self):
-        log_file = self.output_dir / 'crispr_analysis.log'
-        logging.basicConfig(level=logging.INFO,
-                            format='%(asctime)s - %(levelname)s - %(message)s',
-                            filename=str(log_file),
-                            filemode='w')
-        console = logging.StreamHandler()
-        console.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        console.setFormatter(formatter)
-        logging.getLogger('').addHandler(console)
-        logging.info(f"Logging initialized. Log file: {log_file}")
+        if CRISPRAnalyzer._logger is None:
+            CRISPRAnalyzer._logger = logging.getLogger('CRISPRAnalyzer')
+            CRISPRAnalyzer._logger.setLevel(logging.INFO)
+
+            # Remove any existing handlers
+            CRISPRAnalyzer._logger.handlers = []
+
+            # Add console handler
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            CRISPRAnalyzer._logger.addHandler(console_handler)
 
     @staticmethod
     def find_crr12(query: str) -> int:
@@ -64,44 +79,87 @@ class CRISPRAnalyzer:
         return sum(q == r for q, r in zip(query, crr4))
 
     def find_crispr_spacers(self, genome_file: Path, output_prefix: str, output_dir: Path):
-        logging.info(f"Finding CRISPR spacers in {genome_file}...")
-
-        file_handlers = {
-            'all': open(output_dir / f"{output_prefix}AllCRR.fasta", "w"),
-            'crr1': open(output_dir / f"{output_prefix}CRR1.fasta", "w"),
-            'crr2': open(output_dir / f"{output_prefix}CRR2.fasta", "w"),
-            'crr4': open(output_dir / f"{output_prefix}CRR4.fasta", "w"),
-            'csv': open(output_dir / f"{output_prefix}Results.csv", "w"),
-            'error': open(output_dir / f"{output_prefix}Error.fasta", "w")
-        }
-
-        file_handlers['csv'].write("Strain ID, CRR1 Spacers, CRR2 Spacers, CRR4 Spacers, Total Spacers\n")
-        file_handlers['error'].write("Potential assembly errors found in the following crr_genotypes:\n\n")
-
+        """Find CRISPR spacers with proper file handling"""
         try:
-            for record in SeqIO.parse(genome_file, "fasta"):
-                logging.info(f"Processing record: {record.id}, length: {len(record.seq)}")
+            genome_key = str(genome_file.resolve())
+
+            with self._lock:
+                if genome_key in self._processed_genomes:
+                    self._logger.debug(f"Skipping already processed genome: {genome_file}")
+                    return
+                self._processed_genomes.add(genome_key)
+
+            self._logger.info(f"Finding CRISPR spacers in {genome_file}...")
+
+            # Create all required directories
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            # Initialize results file with headers
+            results_file = output_dir / f"{output_prefix}Results.csv"
+            try:
+                # Ensure parent directory exists
+                results_file.parent.mkdir(parents=True, exist_ok=True)
+                with open(results_file, 'w', newline='') as f:
+                    f.write("Strain ID,CRR1 Spacers,CRR2 Spacers,CRR4 Spacers,Total Spacers\n")
+            except Exception as e:
+                self._logger.error(f"Error creating Results file {results_file}: {e}")
+                raise
+
+            file_handlers = {}
+            try:
+                # Open all file handlers
+                file_handlers = {
+                    'all': open(output_dir / f"{output_prefix}AllCRR.fasta", "w"),
+                    'crr1': open(output_dir / f"{output_prefix}CRR1.fasta", "w"),
+                    'crr2': open(output_dir / f"{output_prefix}CRR2.fasta", "w"),
+                    'crr4': open(output_dir / f"{output_prefix}CRR4.fasta", "w"),
+                    'error': open(output_dir / f"{output_prefix}Error.fasta", "w")
+                }
+
+                file_handlers['error'].write("Potential assembly errors found in the following crr_genotypes:\n\n")
+
                 crr_counts = defaultdict(int)
+                for record in SeqIO.parse(genome_file, "fasta"):
+                    self._logger.info(f"Processing record: {record.id}, length: {len(record.seq)}")
 
-                for strand, seq in [("+", str(record.seq)), ("-", str(record.seq.reverse_complement()))]:
-                    self.process_sequence(seq, record.id, strand, crr_counts, file_handlers)
+                    for strand, seq in [("+", str(record.seq)), ("-", str(record.seq.reverse_complement()))]:
+                        self.process_sequence(seq, record.id, strand, crr_counts, file_handlers)
 
+                # Write results to CSV after processing
                 total_spacers = sum(crr_counts.values())
-                file_handlers['csv'].write(
-                    f"{record.id}, {crr_counts['CRR1']}, {crr_counts['CRR2']}, {crr_counts['CRR4']}, {total_spacers}\n")
-                logging.info(
-                    f"Spacers found for {record.id}: CRR1 {crr_counts['CRR1']}, CRR2 {crr_counts['CRR2']}, CRR4 {crr_counts['CRR4']}, total {total_spacers}")
+                try:
+                    with open(results_file, 'a', newline='') as f:
+                        f.write(
+                            f"{output_prefix},{crr_counts['CRR1']},{crr_counts['CRR2']},{crr_counts['CRR4']},{total_spacers}\n"
+                        )
+                except Exception as e:
+                    self._logger.error(f"Error writing to Results file {results_file}: {e}")
+                    raise
+
+                # Cache the results
+                with self._lock:
+                    self._results_cache[genome_key] = {
+                        'CRR1': crr_counts['CRR1'],
+                        'CRR2': crr_counts['CRR2'],
+                        'CRR4': crr_counts['CRR4'],
+                        'total': total_spacers
+                    }
+
+            finally:
+                # Close all file handlers
+                for handler in file_handlers.values():
+                    try:
+                        handler.close()
+                    except Exception as e:
+                        self._logger.error(f"Error closing file handler: {str(e)}")
 
         except Exception as e:
-            logging.error(f"Error processing {genome_file}: {e}")
-        finally:
-            for handler in file_handlers.values():
-                handler.close()
+            self._logger.error(f"Error in find_crispr_spacers for {genome_file}: {str(e)}")
+            raise
 
-        logging.info("CRISPR spacer finding complete.")
-
-    def process_sequence(self, seq: str, record_id: str, strand: str, crr_counts: Dict[str, int],
-                         file_handlers: Dict[str, TextIOWrapper]):
+    def process_sequence(self, seq: str, record_id: str, strand: str,
+                         crr_counts: Dict[str, int],
+                         file_handlers: Dict[str, TextIO]):
         seq_length = len(seq)
         for m in range(seq_length - 29):
             if m + 28 >= seq_length:
@@ -111,8 +169,9 @@ class CRISPRAnalyzer:
             elif seq[m:m + 6] == "GTTCAC" or seq[m + 10:m + 17] == "GTACGGG":
                 self.process_crr4(seq, m, record_id, strand, crr_counts, file_handlers)
 
-    def process_crr12(self, seq: str, m: int, record_id: str, strand: str, crr_counts: Dict[str, int],
-                      file_handlers: Dict[str, TextIOWrapper]):
+    def process_crr12(self, seq: str, m: int, record_id: str, strand: str,
+                      crr_counts: Dict[str, int],
+                      file_handlers: Dict[str, TextIO]):
         seq_length = len(seq)
         for n in range(100):
             if m + 88 + n >= seq_length:
@@ -133,8 +192,9 @@ class CRISPRAnalyzer:
                         f"{crr_type} spacer found: {record_id} {crr_type}Spacer{crr_counts[crr_type]} {m + 30}:{m + 59 + n} Strand:{strand}")
                 break
 
-    def process_crr4(self, seq: str, m: int, record_id: str, strand: str, crr_counts: Dict[str, int],
-                     file_handlers: Dict[str, TextIOWrapper]):
+    def process_crr4(self, seq: str, m: int, record_id: str, strand: str,
+                     crr_counts: Dict[str, int],
+                     file_handlers: Dict[str, TextIO]):
         seq_length = len(seq)
         for n in range(30, 101):
             if m + n + 28 >= seq_length:
@@ -168,43 +228,54 @@ class CRISPRAnalyzer:
             self.find_crispr_spacers(genome_file, genome_name, genome_output_dir)
 
     def run_analysis(self):
-        logging.info(f"Starting CRISPR analysis for genomes in {self.input_dir}")
-        start_time = time.time()
+        """Process a single genome file"""
+        with self._lock:
+            if not any(self.input_dir.glob('*.fasta')):
+                self._logger.warning(f"No FASTA files found in {self.input_dir}")
+                return
 
-        genome_files = list(self.input_dir.glob('*.fasta'))
-        total_genomes = len(genome_files)
-        logging.info(f"Found {total_genomes} genome files")
-
-        for i in range(0, total_genomes, self.batch_size):
-            batch = genome_files[i:i + self.batch_size]
-            logging.info(f"Processing batch {i // self.batch_size + 1} of {(total_genomes - 1) // self.batch_size + 1}")
-            self.process_genome_batch(batch)
-
-        end_time = time.time()
-        logging.info(f"CRISPR analysis complete. Total time: {end_time - start_time:.2f} seconds")
+            for genome_file in self.input_dir.glob('*.fasta'):
+                genome_key = str(genome_file.resolve())
+                if genome_key not in self._processed_genomes:
+                    self._logger.info(f"Processing genome: {genome_file.name}")
+                    genome_output_dir = self.results_dir / genome_file.stem
+                    genome_output_dir.mkdir(parents=True, exist_ok=True)
+                    self.find_crispr_spacers(genome_file, genome_file.stem, genome_output_dir)
 
     def get_crispr_summary(self) -> Dict[str, str]:
+        """Get summary of CRISPR analysis"""
         summaries = {}
         for genome_dir in self.results_dir.iterdir():
             if genome_dir.is_dir():
                 genome_name = genome_dir.name
                 results_file = genome_dir / f"{genome_name}Results.csv"
-                if results_file.exists():
-                    try:
+
+                try:
+                    if results_file.exists() and results_file.stat().st_size > 0:
                         df = pd.read_csv(results_file, skipinitialspace=True)
-                        crr1_total = df['CRR1 Spacers'].sum()
-                        crr2_total = df['CRR2 Spacers'].sum()
-                        crr4_total = df['CRR4 Spacers'].sum()
-                        total_spacers = df['Total Spacers'].sum()
-                        summaries[
-                            genome_name] = f"CRR1: {crr1_total}, CRR2: {crr2_total}, CRR4: {crr4_total}, Total: {total_spacers}"
-                    except Exception as e:
-                        logging.error(f"Error processing {results_file}: {e}")
-                        summaries[genome_name] = "Error processing results"
-                else:
-                    summaries[genome_name] = "No results file found"
+                        if not df.empty:
+                            row = df.iloc[0]
+                            summaries[genome_name] = (
+                                f"CRR1: {row['CRR1 Spacers']}, "
+                                f"CRR2: {row['CRR2 Spacers']}, "
+                                f"CRR4: {row['CRR4 Spacers']}, "
+                                f"Total: {row['Total Spacers']}"
+                            )
+                        else:
+                            summaries[genome_name] = "No spacers found"
+                    else:
+                        summaries[genome_name] = "No results"
+                except Exception as e:
+                    self._logger.error(f"Error reading results for {genome_name}: {e}")
+                    summaries[genome_name] = "Error reading results"
 
         return summaries
+
+    def clear_cache(self):
+        """Clear the cache and processed genomes set"""
+        with self._lock:
+            self._processed_genomes.clear()
+            self._results_cache.clear()
 
 
 
