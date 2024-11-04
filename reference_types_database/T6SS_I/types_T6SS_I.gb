@@ -1152,7 +1152,7 @@ ORIGIN
     38521 aaaatacagg aaaataaatg aattctaatt acttttgcaa
 
 //
-LOCUS       TFI02_NZ_JAAEWC010000008.1_(reversed)       32530 bp    DNA     linear       25-OCT-2024
+LOCUS       TSI02_NZ_JAAEWC010000008.1_(reversed)       32530 bp    DNA     linear       25-OCT-2024
 DEFINITION  Erwinia amylovora strain strain.
 ACCESSION   urn.local...m8-idavz9q
 KEYWORDS    .
@@ -2148,7 +2148,7 @@ ORIGIN
     32461 aggttgtgtc atacagaatt atattggtag ataagaaaag taagtctaaa gtttttttga
     32521 ttgtgacatt
 //
-LOCUS       TFI03_NZ_JAAEWK010000001.1       33393 bp    DNA     linear       25-OCT-2024
+LOCUS       TSI03_NZ_JAAEWK010000001.1       33393 bp    DNA     linear       25-OCT-2024
 DEFINITION  Erwinia amylovora strain strain.
 ACCESSION   urn.local...m9-idavz9q
 KEYWORDS    .
@@ -3185,7 +3185,7 @@ ORIGIN
     33361 ggtagttaaa atatgaaatt agaatttaac tta
 
 //
-LOCUS       TFI04_CP063691.1       45558 bp    DNA     linear       25-OCT-2024
+LOCUS       TSI04_CP063691.1       45558 bp    DNA     linear       25-OCT-2024
 DEFINITION  Erwinia amylovora strain strain.
 ACCESSION   urn.local...n4-idaw3zj
 VERSION     urn.local...n4-idaw3zj
