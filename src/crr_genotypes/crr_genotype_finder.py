@@ -378,15 +378,15 @@ class CRRFinder:
         return best_type
 
     def _get_best_group(self, data: Dict[str, Any]) -> Tuple[Optional[str], Optional[str], Optional[Dict[str, Any]]]:
-    """
-    Get the best group from analyzed data.
-
-    Args:
-        data: Dictionary containing group analysis data
-
-    Returns:
-        Tuple of (best_group, best_subgroup, best_value) where each can be None if no data is available
-    """
+        """
+        Get the best group from analyzed data.
+    
+        Args:
+            data: Dictionary containing group analysis data
+    
+        Returns:
+            Tuple of (best_group, best_subgroup, best_value) where each can be None if no data is available
+        """
     if not data:
         return '', '', {}  # Return empty strings and dict instead of None
 
