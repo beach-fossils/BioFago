@@ -378,35 +378,35 @@ class CRRFinder:
         return best_type
 
     def _get_best_group(self, data: Dict[str, Any]) -> Tuple[Optional[str], Optional[str], Optional[Dict[str, Any]]]:
-        """
-        Get the best group from analyzed data.
+    """
+    Get the best group from analyzed data.
 
-        Args:
-            data: Dictionary containing group analysis data
+    Args:
+        data: Dictionary containing group analysis data
 
-        Returns:
-            Tuple of (best_group, best_subgroup, best_value) where each can be None if no data is available
-        """
-        if not data:
-            return '', '', {}  # Return empty strings and dict instead of None
+    Returns:
+        Tuple of (best_group, best_subgroup, best_value) where each can be None if no data is available
+    """
+    if not data:
+        return '', '', {}  # Return empty strings and dict instead of None
 
-        try:
-            best_group_name, best_value = max(
-                data.items(),
-                key=lambda item: item[1]['composite_score']
-            )
+    try:
+        best_group_name, best_value = max(
+            data.items(),
+            key=lambda item: item[1]['composite_score']
+        )
 
-            # Split the subgroup path to extract group and subgroup names
-            group_parts = best_group_name.split(' > ')
-            best_group = group_parts[0] if group_parts else ''
-            best_subgroup = ' > '.join(group_parts[1:]) if len(group_parts) > 1 else ''
+        # Split the subgroup path to extract group and subgroup names
+        group_parts = best_group_name.split(' > ')
+        best_group = group_parts[0] if group_parts else ''
+        best_subgroup = ' > '.join(group_parts[1:]) if len(group_parts) > 1 else ''
 
-            return best_group, best_subgroup, best_value
-        except Exception as e:
-            self.logger.error(f"Error finding best group: {str(e)}")
-            return '', '', {}  # Return empty strings and dict in case of error
+        return best_group, best_subgroup, best_value
+    except Exception as e:
+        self.logger.error(f"Error finding best group: {str(e)}")
+        return '', '', {}  # Return empty strings and dict in case of error
 
-        def get_crr_summary(self) -> str:
+    def get_crr_summary(self) -> str:
         """Summarize the CRR best results for the genome with consistent ordering."""
         best_results_file = self.output_folder / f'{self.genome_fasta.stem}_CRR_best_results.csv'
         if best_results_file.exists():
@@ -424,8 +424,8 @@ class CRRFinder:
 
                     # Sort CRRs in consistent order (CRR4, CRR2, CRR1)
                     ordered_crrs = sorted(crr_info_dict.keys(),
-                                          key=lambda x: int(x.replace('CRR', '')),
-                                          reverse=True)  # Reverse to get CRR4, CRR2, CRR1 order
+                                       key=lambda x: int(x.replace('CRR', '')),
+                                       reverse=True)  # Reverse to get CRR4, CRR2, CRR1 order
 
                     # Join the CRR information in the correct order
                     crr_info = "CRR: " + "; ".join(crr_info_dict[crr] for crr in ordered_crrs)
