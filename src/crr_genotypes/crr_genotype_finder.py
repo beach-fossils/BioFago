@@ -387,24 +387,24 @@ class CRRFinder:
         Returns:
             Tuple of (best_group, best_subgroup, best_value) where each can be None if no data is available
         """
-    if not data:
-        return '', '', {}  # Return empty strings and dict instead of None
-
-    try:
-        best_group_name, best_value = max(
-            data.items(),
-            key=lambda item: item[1]['composite_score']
-        )
-
-        # Split the subgroup path to extract group and subgroup names
-        group_parts = best_group_name.split(' > ')
-        best_group = group_parts[0] if group_parts else ''
-        best_subgroup = ' > '.join(group_parts[1:]) if len(group_parts) > 1 else ''
-
-        return best_group, best_subgroup, best_value
-    except Exception as e:
-        self.logger.error(f"Error finding best group: {str(e)}")
-        return '', '', {}  # Return empty strings and dict in case of error
+        if not data:
+            return '', '', {}  # Return empty strings and dict instead of None
+    
+        try:
+            best_group_name, best_value = max(
+                data.items(),
+                key=lambda item: item[1]['composite_score']
+            )
+    
+            # Split the subgroup path to extract group and subgroup names
+            group_parts = best_group_name.split(' > ')
+            best_group = group_parts[0] if group_parts else ''
+            best_subgroup = ' > '.join(group_parts[1:]) if len(group_parts) > 1 else ''
+    
+            return best_group, best_subgroup, best_value
+        except Exception as e:
+            self.logger.error(f"Error finding best group: {str(e)}")
+            return '', '', {}  # Return empty strings and dict in case of error
 
     def get_crr_summary(self) -> str:
         """Summarize the CRR best results for the genome with consistent ordering."""
