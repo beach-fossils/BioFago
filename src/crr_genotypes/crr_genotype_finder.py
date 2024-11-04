@@ -1,4 +1,7 @@
+import fcntl
+import shutil
 import subprocess
+import threading
 from pathlib import Path
 import pandas as pd
 from Bio import SeqIO
@@ -7,12 +10,13 @@ import os
 import json
 import logging
 import tempfile
-from typing import Dict, List, Tuple, Any
 from collections import Counter
 import multiprocessing
 import csv
 from io import StringIO
 import re
+from typing import Dict, Tuple, Optional, Any, List
+
 
 
 
@@ -34,21 +38,143 @@ class CRRFinder:
         self.output_folder.mkdir(parents=True, exist_ok=True)
         self.spacers: Dict[str, str] = {}
         self.groups = self._load_groups()
-        self.blast_output = tempfile.NamedTemporaryFile(delete=False, suffix='_blast_results.txt').name
-        self.spacer_fasta = tempfile.NamedTemporaryFile(delete=False, suffix='_spacers.fasta').name
+
+        # Create unique temporary directory for this instance
+        self.temp_dir = Path(tempfile.mkdtemp(prefix=f'crr_finder_{self.genome_fasta.stem}_'))
+        self.blast_output = self.temp_dir / f'{self.genome_fasta.stem}_blast_results.txt'
+        self.spacer_fasta = self.temp_dir / f'{self.genome_fasta.stem}_spacers.fasta'
+
         self.total_spacers_found = 0
         self._setup_logging()
-
+        self._lock = threading.Lock()
 
     def _setup_logging(self) -> None:
-        """Setup logging configuration."""
-        logging.basicConfig(
-            filename=self.output_folder / 'genome_analyzer.log',
-            filemode='a',
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            level=logging.INFO
-        )
-        logging.info("CRRFinder initialized.")
+        self.logger = logging.getLogger(f'CRRFinder_{self.genome_fasta.stem}')
+        self.logger.setLevel(logging.INFO)
+
+        # Add file handler
+        log_file = self.output_folder / f'{self.genome_fasta.stem}_crr_finder.log'
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        self.logger.addHandler(file_handler)
+
+        self.logger.info("CRRFinder initialized.")
+
+    def _create_spacer_fasta(self) -> None:
+        """Create a FASTA file from the spacer sequences with proper error handling"""
+        try:
+            # Ensure the parent directory exists
+            self.spacer_fasta.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(self.spacer_fasta, 'w') as f:
+                for spacer_id, sequence in self.spacers.items():
+                    f.write(f">{spacer_id}\n{sequence}\n")
+
+            self.logger.info(f"Created spacer FASTA file: {self.spacer_fasta}")
+        except Exception as e:
+            self.logger.error(f"Error creating spacer FASTA file: {e}")
+            raise
+
+    def _run_blast(self) -> None:
+        """Run BLAST with proper error handling and database creation"""
+        try:
+            # Create BLAST database
+            makeblastdb_cmd = [
+                'makeblastdb',
+                '-in', str(self.spacer_fasta),
+                '-dbtype', 'nucl',
+                '-logfile', str(self.output_folder / 'makeblastdb.log')
+            ]
+
+            subprocess.run(makeblastdb_cmd, check=True, capture_output=True)
+
+            # Run BLAST search
+            blastn_cmd = [
+                'blastn',
+                '-query', str(self.genome_fasta),
+                '-db', str(self.spacer_fasta),
+                '-out', str(self.blast_output),
+                '-outfmt', '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore'
+            ]
+
+            subprocess.run(blastn_cmd, check=True, capture_output=True)
+
+            self.logger.info(f"BLAST search completed successfully")
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Error running BLAST: {e}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Unexpected error in BLAST processing: {e}")
+            raise
+
+    def analyze_genome(self) -> None:
+        """Perform the full analysis workflow with proper file handling"""
+        try:
+            spacer_files = list(SPACERS_FOLDER.glob('*.csv'))
+            for spacer_file in tqdm(spacer_files, desc="Processing spacer files"):
+                try:
+                    crr_type = spacer_file.stem.split('_')[-1]
+                    self.logger.info(f"Processing {crr_type} spacers from {spacer_file}")
+
+                    with self._lock:
+                        self.spacers = self._load_spacers(spacer_file)
+                        if not self.spacers:
+                            self.logger.warning(f"No spacers loaded from {spacer_file}")
+                            continue
+
+                    # Create output paths
+                    output_csv = self.output_folder / f"{crr_type}_incidence_matrix.csv"
+                    blast_output_csv = self.output_folder / f"{crr_type}_incidence_matrix_blast_results.csv"
+                    output_json = self.output_folder / f"{crr_type}_groups.json"
+
+                    # Ensure output directory exists
+                    output_csv.parent.mkdir(parents=True, exist_ok=True)
+
+                    self._create_spacer_fasta()
+                    self._run_blast()
+
+                    presence_matrix, blast_results = self._parse_blast_results()
+
+                    if presence_matrix and blast_results:
+                        self._save_presence_matrix(presence_matrix, output_csv)
+                        self._save_blast_results(blast_results, blast_output_csv)
+
+                        identified_groups = self._identify_groups(presence_matrix, crr_type)
+                        self._save_identified_groups(identified_groups, output_json)
+
+                    self.logger.info(f"Analysis complete for {crr_type}")
+
+                except Exception as e:
+                    self.logger.error(f"Error processing {crr_type}: {str(e)}")
+                    continue
+
+                finally:
+                    self.total_spacers_found = 0
+
+        except Exception as e:
+            self.logger.error(f"Error in analyze_genome: {str(e)}")
+            raise
+        finally:
+            self._cleanup_temp_files()
+
+    def _cleanup_temp_files(self) -> None:
+        """Clean up temporary files and directories"""
+        try:
+            if self.temp_dir.exists():
+                shutil.rmtree(self.temp_dir)
+                self.logger.info(f"Cleaned up temporary directory: {self.temp_dir}")
+        except Exception as e:
+            self.logger.error(f"Error cleaning up temporary files: {e}")
+
+    def _save_presence_matrix(self, presence_matrix: Dict[str, int], output_csv: Path) -> None:
+        """Save the presence matrix to CSV with error handling"""
+        try:
+            df = pd.DataFrame(list(presence_matrix.items()), columns=['Spacer_ID', 'Presence'])
+            df.to_csv(output_csv, index=False)
+            self.logger.info(f"Saved presence matrix to {output_csv}")
+        except Exception as e:
+            self.logger.error(f"Error saving presence matrix to {output_csv}: {e}")
+            raise
 
     def _load_spacers(self, csv_file: Path) -> Dict[str, str]:
         """Load spacer sequences from a CSV file."""
@@ -88,35 +214,6 @@ class CRRFinder:
             logging.error(f"Error parsing JSON from {MAP_JSON}: {e}")
         return {}
 
-    def _create_spacer_fasta(self) -> None:
-        """Create a FASTA file from the spacer sequences."""
-        try:
-            with open(self.spacer_fasta, 'w') as f:
-                for spacer_id, sequence in self.spacers.items():
-                    f.write(f">{spacer_id}\n{sequence}\n")
-        except IOError as e:
-            logging.error(f"Error creating spacer FASTA file: {e}")
-
-    def _run_blast(self) -> None:
-        """Run BLAST to find spacer sequences in the genome."""
-        try:
-            subprocess.run([
-                'makeblastdb',
-                '-in', self.spacer_fasta,
-                '-dbtype', 'nucl'
-            ], check=True)
-
-            subprocess.run([
-                'blastn',
-                '-query', self.genome_fasta,
-                '-db', self.spacer_fasta,
-                '-out', self.blast_output,
-                '-outfmt', '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore'
-            ], check=True)
-        except subprocess.CalledProcessError as e:
-            logging.error(f"Error running BLAST: {e}")
-            raise
-
     def _parse_blast_results(self) -> Tuple[Dict[str, int], List[List[str]]]:
         presence_matrix = {spacer_id: 0 for spacer_id in self.spacers.keys()}
         blast_results = []
@@ -151,14 +248,6 @@ class CRRFinder:
 
         self.total_spacers_found = sum(spacer_counter.values())
         return presence_matrix, blast_results
-
-    def _save_presence_matrix(self, presence_matrix: Dict[str, int], output_csv: Path) -> None:
-        """Save the presence/absence matrix to a CSV file."""
-        try:
-            df = pd.DataFrame(list(presence_matrix.items()), columns=['Spacer_ID', 'Presence'])
-            df.to_csv(output_csv, index=False)
-        except IOError as e:
-            logging.error(f"Error saving presence matrix to {output_csv}: {e}")
 
     def _save_blast_results(self, blast_results: List[List[str]], output_csv: Path) -> None:
         """Save the raw BLAST results to a CSV file."""
@@ -232,56 +321,6 @@ class CRRFinder:
         except IOError as e:
             logging.error(f"Error saving identified groups to {output_json}: {e}")
 
-    def analyze_genome(self) -> None:
-        """Perform the full analysis workflows."""
-        spacer_files = list(SPACERS_FOLDER.glob('*.csv'))
-        for spacer_file in tqdm(spacer_files, desc="Processing spacer files"):
-            crr_type = spacer_file.stem.split('_')[-1]
-            logging.info(f"Processing {crr_type} spacers from {spacer_file}")
-            self.spacers = self._load_spacers(spacer_file)
-
-            output_csv = self.output_folder / f"{crr_type}_incidence_matrix.csv"
-            blast_output_csv = self.output_folder / f"{crr_type}_incidence_matrix_blast_results.csv"
-
-            self._create_spacer_fasta()
-
-            print(f"Running BLAST for {crr_type}...")
-            self._run_blast()
-
-            print(f"Parsing BLAST results for {crr_type}...")
-            presence_matrix, blast_results = self._parse_blast_results()
-
-            print(f"Saving presence matrix for {crr_type}...")
-            self._save_presence_matrix(presence_matrix, output_csv)
-
-            print(f"Saving BLAST results for {crr_type}...")
-            self._save_blast_results(blast_results, blast_output_csv)
-
-            print(f"Identifying groups for {crr_type}...")
-            identified_groups = self._identify_groups(presence_matrix, crr_type)
-
-            print(f"Saving identified groups for {crr_type}...")
-            output_json = self.output_folder / f"{crr_type}_groups.json"
-            self._save_identified_groups(identified_groups, output_json)
-
-            print(f"Analysis complete for {crr_type}.")
-            logging.info(f"Analysis complete for {crr_type}.")
-
-            # Reset total spacers found for the next group
-            self.total_spacers_found = 0
-
-            # Clean up temporary files
-            self._cleanup_temp_files()
-
-
-    def _cleanup_temp_files(self) -> None:
-        """Clean up temporary files created during the analysis."""
-        try:
-            for file in [self.spacer_fasta, self.blast_output]:
-                if Path(file).exists():
-                    Path(file).unlink()
-        except OSError as e:
-            logging.error(f"Error cleaning up temporary files: {e}")
 
     def process_directory(self):
         results = []
@@ -338,18 +377,34 @@ class CRRFinder:
             "total_spacers_found_in_genome_percentage"]) / 2
         return best_type
 
-    def _get_best_group(self, data: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
+    def _get_best_group(self, data: Dict[str, Any]) -> Tuple[Optional[str], Optional[str], Optional[Dict[str, Any]]]:
+        """
+        Get the best group from analyzed data.
+
+        Args:
+            data: Dictionary containing group analysis data
+
+        Returns:
+            Tuple of (best_group, best_subgroup, best_value) where each can be None if no data is available
+        """
         if not data:
-            return None, None, None
-        best_group_name, best_value = max(
-            data.items(),
-            key=lambda item: item[1]['composite_score']
-        )
-        # Split the subgroup path to extract group and subgroup names
-        group_parts = best_group_name.split(' > ')
-        best_group = group_parts[0] if group_parts else ''
-        best_subgroup = ' > '.join(group_parts[1:]) if len(group_parts) > 1 else ''
-        return best_group, best_subgroup, best_value
+            return '', '', {}  # Return empty strings and dict instead of None
+
+        try:
+            best_group_name, best_value = max(
+                data.items(),
+                key=lambda item: item[1]['composite_score']
+            )
+
+            # Split the subgroup path to extract group and subgroup names
+            group_parts = best_group_name.split(' > ')
+            best_group = group_parts[0] if group_parts else ''
+            best_subgroup = ' > '.join(group_parts[1:]) if len(group_parts) > 1 else ''
+
+            return best_group, best_subgroup, best_value
+        except Exception as e:
+            self.logger.error(f"Error finding best group: {str(e)}")
+            return '', '', {}  # Return empty strings and dict in case of error
 
     def get_crr_summary(self) -> str:
         """Summarize the CRR best results for the genome."""
@@ -400,24 +455,74 @@ def collect_results(root_dir: Path) -> List[Tuple[str, str, str, str, str]]:
                     results.extend(process_directory(clade, clade.name, '', ''))
     return results
 
-def process_directory(directory: Path, clade: str, subclade: str, subsubclade: str) -> List[Tuple[str, str, str, str, str]]:
+
+def process_directory(directory: Path, clade: str, subclade: str, subsubclade: str) -> List[
+    Tuple[str, str, str, str, str]]:
+    """
+    Process a directory to find CRR results for genome files.
+
+    Args:
+        directory: Path object pointing to the directory containing genome files
+        clade: Clade information
+        subclade: Subclade information
+        subsubclade: Sub-subclade information
+
+    Returns:
+        List of tuples containing (genome_name, clade, subclade, subsubclade, crr_info)
+    """
     results = []
-    for genome_file in directory.glob('*.fn*'):
-        crr_results_file = directory / 'CRR_finder' / genome_file.stem / f'{genome_file.stem}_CRR_best_results.csv'
-        if crr_results_file.exists():
-            try:
-                with open(crr_results_file, 'r') as f:
-                    reader = csv.DictReader(f)
-                    crr_info = "CRR: "
-                    for row in reader:
-                        crr_info += f"{row['CRR Type']} - Group: {row['Best Group']}, Subgroup: {row['Best Subgroup']}, Score: {row['composite_score']}; "
-                    crr_info = crr_info.rstrip('; ')
-                results.append((genome_file.stem, clade, subclade, subsubclade, crr_info))
-            except Exception as e:
-                logging.error(f"Error processing {crr_results_file}: {e}")
-                results.append((genome_file.stem, clade, subclade, subsubclade, f"Error: {str(e)}"))
-        else:
-            results.append((genome_file.stem, clade, subclade, subsubclade, "CRR: No results"))
+    try:
+        # Ensure directory is a Path object
+        directory = Path(directory)
+
+        # Find all genome files
+        for genome_file in directory.glob('*.fn*'):
+            # Construct paths using joinpath or / operator
+            crr_finder_dir = directory.joinpath('CRR_finder', genome_file.stem)
+            results_file = crr_finder_dir.joinpath(f'{genome_file.stem}_CRR_best_results.csv')
+
+            if results_file.exists():
+                try:
+                    with results_file.open('r') as f:
+                        reader = csv.DictReader(f)
+                        crr_info = "CRR: "
+                        for row in reader:
+                            crr_info += (
+                                f"{row.get('CRR Type', 'Unknown')} - "
+                                f"Group: {row.get('Best Group', 'Unknown')}, "
+                                f"Subgroup: {row.get('Best Subgroup', 'Unknown')}, "
+                                f"Score: {row.get('composite_score', '0.0')}; "
+                            )
+                        crr_info = crr_info.rstrip('; ')
+
+                    results.append((
+                        genome_file.stem,
+                        str(clade),
+                        str(subclade),
+                        str(subsubclade),
+                        crr_info
+                    ))
+                except Exception as e:
+                    logging.error(f"Error processing {results_file}: {e}")
+                    results.append((
+                        genome_file.stem,
+                        str(clade),
+                        str(subclade),
+                        str(subsubclade),
+                        f"Error: {str(e)}"
+                    ))
+            else:
+                results.append((
+                    genome_file.stem,
+                    str(clade),
+                    str(subclade),
+                    str(subsubclade),
+                    "CRR: No results"
+                ))
+
+    except Exception as e:
+        logging.error(f"Error processing directory {directory}: {e}")
+
     return results
 
 
