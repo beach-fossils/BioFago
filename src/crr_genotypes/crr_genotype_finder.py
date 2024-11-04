@@ -406,16 +406,31 @@ class CRRFinder:
             self.logger.error(f"Error finding best group: {str(e)}")
             return '', '', {}  # Return empty strings and dict in case of error
 
-    def get_crr_summary(self) -> str:
-        """Summarize the CRR best results for the genome."""
+        def get_crr_summary(self) -> str:
+        """Summarize the CRR best results for the genome with consistent ordering."""
         best_results_file = self.output_folder / f'{self.genome_fasta.stem}_CRR_best_results.csv'
         if best_results_file.exists():
             try:
                 df = pd.read_csv(best_results_file)
-                crr_info = "CRR: "
-                for _, row in df.iterrows():
-                    crr_info += f"{row['CRR Type']} - Group: {row['Best Group']}, Subgroup: {row['Best Subgroup']}, Score: {row['composite_score']:.2f}; "
-                return crr_info.rstrip('; ')  # Remove trailing semicolon and space
+                if not df.empty:
+                    # Create a dictionary to store CRR information
+                    crr_info_dict = {}
+
+                    # Process each row and store in dictionary
+                    for _, row in df.iterrows():
+                        crr_type = row['CRR Type']
+                        crr_info = f"{crr_type} - Group: {row['Best Group']}, Subgroup: {row['Best Subgroup']}, Score: {row['composite_score']:.2f}"
+                        crr_info_dict[crr_type] = crr_info
+
+                    # Sort CRRs in consistent order (CRR4, CRR2, CRR1)
+                    ordered_crrs = sorted(crr_info_dict.keys(),
+                                          key=lambda x: int(x.replace('CRR', '')),
+                                          reverse=True)  # Reverse to get CRR4, CRR2, CRR1 order
+
+                    # Join the CRR information in the correct order
+                    crr_info = "CRR: " + "; ".join(crr_info_dict[crr] for crr in ordered_crrs)
+                    return crr_info
+
             except Exception as e:
                 logging.error(f"Error reading CRR results from {best_results_file}: {e}")
                 return "CRR: Error in processing results"
