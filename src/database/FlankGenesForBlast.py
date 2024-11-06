@@ -236,34 +236,34 @@ def main_move():
 
 def main():
     # Define paths and parameters
-    #genomes_folder_path = "/Volumes/Crucial_X9/BioFago/reference_crispr/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/fasta_files"
+    genomes_folder_path = "/Volumes/Crucial_X9/BioFago/reference_crispr/ApproachFlankGenes/genomes/ErwiniaAmyl/ncbi_dataset/fasta_files"
     #Fix the results path to point to blast_results directory
-    db_folder_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/db"
-    results_folder_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/blast_results"
-    # ref_seq_gb_path = "/Users/josediogomoura/Documents/BioFago/BioFago/reference_crispr/ref_sequences/Capsule_locus_12genes_X77921.gb"
-    extracted_genes_fasta = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/flank_genes/flank_genes.fasta'
-
-    # Ensure output folders exist
+    db_folder_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/db"
+    results_folder_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/blast_results"
+    ref_seq_gb_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/ref_region/PROKKA_11052024.gbk"
+    extracted_genes_fasta = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/flank_genes/flank_genes.fasta'
+    #
+    # # Ensure output folders exist
     Path(db_folder_path).mkdir(parents=True, exist_ok=True)
     Path(results_folder_path).mkdir(parents=True, exist_ok=True)
 
     # # # Extract flank genes and write to a FASTA file
-    # ref_seq_gb_path = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/PROKKA_10252024.gbk'
+    # ref_seq_gb_path = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/ref_region/PROKKA_11052024.gbk'
     # logging.info("Extracting flank genes...")
     # flank_gene_extractor = FlankGeneExtractor(ref_seq_gb_path)
     # flank_gene_extractor.extract_flank_genes()
-    # flank_gene_extractor.write_genes_to_fasta(output_file_path='/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/flank_genes/flank_genes.fasta')
+    # flank_gene_extractor.write_genes_to_fasta(output_file_path='/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/flank_genes/flank_genes.fasta')
 
     # Collect all .fna genome files from subdirectories
     # Now you can use it like this
     #src_folder = "/reference_crispr/OtherSpecies/Erwinia_billingiae/ncbi_dataset/ncbi_dataset/reference_crispr"
     dest_folder = '/Volumes/Crucial_X9/BioFago/data/ea_genomes'
-    #move_files(src_folder, dest_folder)
-
+    # #move_files(src_folder, dest_folder)
+    #
     logging.info(f"Extracted genes FASTA exists: {os.path.exists(extracted_genes_fasta)}")
     logging.info(f"Destination folder exists: {os.path.exists(dest_folder)}")
     logging.info(f"Number of genome files: {len(os.listdir(dest_folder))}")
-
+    #
     gene_blast_runner = BlastRunner(extracted_genes_fasta, dest_folder, db_folder_path, results_folder_path)
 
     logging.info("Starting genome processing...")
@@ -275,15 +275,15 @@ def main():
     logging.info("BLAST completed")
 
     # Step 3: Compile BLAST results into a CSV
-    blast_results_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/blast_results'
+    blast_results_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/blast_results'
     genomes_folder = '/Volumes/Crucial_X9/BioFago/data/ea_genomes'
-    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/csv_blast/compiled_results.csv'
+    output_csv = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/csv_blast/compiled_results.csv'
     log_file = os.path.join(os.path.dirname(output_csv), 'post_blast_output.log')
     #
     post_blast = PostBlastOutput(blast_results_folder, genomes_folder, output_csv, log_file)
     post_blast.compile_blast_results_to_csv()  # Compiles BLAST results into a CSV
     #
-    extracted_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II1/extracted_seq"
+    extracted_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/extracted"
     post_blast.extract_regions_from_genomes_v2(extracted_path)
 
     logging.info("Workflow completed successfully.")
