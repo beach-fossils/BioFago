@@ -1,5 +1,0 @@
-genomes_folder: '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/genomes'
-keep_sequence_loci: true
-threshold_species: 0.95
-log_level: 'INFO'
-
