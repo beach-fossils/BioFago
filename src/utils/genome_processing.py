@@ -11,6 +11,7 @@ import pandas as pd
 from Bio import SeqIO
 
 from crr_genotypes.crispr_analyzer import CRISPRAnalyzer
+from resistance.levan_synthesis import run_levan_analysis
 from resistance.str_resistance import StrResistance
 from resistance.virulence_genes import VirulenceGenes
 from plasmids.plasmid_finder import PlasmidFinder
@@ -50,35 +51,41 @@ def setup_logging():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def process_genomes(genome_files: List[Path], clade_classifier: CRISPRCladeClassifier, max_workers: int = 4) -> List[
-    Dict]:
+def process_genomes(genome_files: List[Path], clade_classifier: CRISPRCladeClassifier, max_workers: int = 4) -> List[Dict]:
     processed_results = []
     futures = []
 
-    # Use ProcessPoolExecutor instead of ThreadPoolExecutor for CPU-bound tasks
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all jobs
         for genome_file in genome_files:
             future = executor.submit(process_single_genome, genome_file, clade_classifier)
             futures.append((future, genome_file))
 
-        # Wait for all futures to complete
         for future, genome_file in futures:
             try:
                 result = future.result()
                 if result:
-                    logging.info(f"Successfully processed genome: {genome_file.stem}")
+                    # Run levan analysis
+                    try:
+                        levan_result = run_levan_analysis(
+                            genome_path=genome_file,
+                            strain_id=genome_file.stem
+                        )
+                        if levan_result is not None and not levan_result.empty:
+                            result['levan_synthesis'] = format_levan_result(levan_result.iloc[0].to_dict())
+                            logging.info(f"Successfully added levan synthesis results for {genome_file.stem}")
+                        else:
+                            result['levan_synthesis'] = "No levan synthesis results found"
+                            logging.warning(f"No levan synthesis results for {genome_file.stem}")
+                    except Exception as e:
+                        logging.error(f"Error in levan analysis for {genome_file.name}: {str(e)}")
+                        result['levan_synthesis'] = f"Analysis failed: {str(e)}"
+
                     processed_results.append(result)
+                    logging.info(f"Successfully processed genome: {genome_file.stem}")
                 else:
                     logging.error(f"Failed to process genome: {genome_file.stem}")
             except Exception as e:
                 logging.error(f"Exception processing genome {genome_file}: {str(e)}")
-
-    logging.info(f"Processed {len(processed_results)} out of {len(genome_files)} genomes")
-    if len(processed_results) < len(genome_files):
-        processed_names = {r['name'] for r in processed_results}
-        missing_names = [f.stem for f in genome_files if f.stem not in processed_names]
-        logging.warning(f"Missing results for genomes: {missing_names}")
 
     return processed_results
 
@@ -218,8 +225,9 @@ def write_results_to_csv(results: List[Dict], output_path: Path) -> None:
             'streptomycin', 'crispr_spacers', 'crispr_genotype',
             'capsule_locus', 'cellulose_locus', 'lps_locus', 'sorbitol_locus',
             'flag_i_locus', 'flag_ii_locus', 'flag_iii_locus', 'flag_iv_locus',
-            't3ss_i_locus', 't3ss_ii_locus', 't6ss_i_locus', 't6ss_ii_locus',
-            'clade', 'clade_confidence_score', 'clade_confidence_level'
+            't3ss_i_locus', 't3ss_ii_locus', 't6ss_i_locus', 't6ss_ii_locus', 'flag3_locus',
+            'clade', 'clade_confidence_score', 'clade_confidence_level',
+            'levan_synthesis'
         ]
         virulence_columns = ['other_genes']
         all_columns = base_columns + virulence_columns
@@ -317,7 +325,7 @@ def keep_loci_files(output_dir: Path) -> None:
         type_folders = [
             'types_capsule', 'types_cellulose', 'types_lps', 'types_srl',
             'types_flag_I', 'types_flag_II', 'types_flag_III', 'types_flag_IV',
-            'types_T3SS_I', 'types_T3SS_II', 'types_T6SS_I', 'types_T6SS_II'
+            'types_T3SS_I', 'types_T3SS_II', 'types_T6SS_I', 'types_T6SS_II', 'types_flag3'
         ]
 
         def process_types_finder_folders(types_finder_folder: Path, new_types_finder_folder: Path) -> None:
@@ -373,6 +381,20 @@ def copy_loci_files(locus_folder: Path, new_types_finder_folder: Path, genome_na
                         logging.info(f"Copied {file} to {new_location / file.name}")
                     except Exception as e:
                         logging.error(f"Error copying file {file}: {str(e)}")
+
+
+def format_levan_result(levan_result: dict) -> str:
+    """Format levan synthesis results into a single string."""
+    try:
+        return (
+            f"lsc: {levan_result.get('lsc_identity', 0):.2f}% identity, {levan_result.get('lsc_coverage', 0):.2f}% coverage | "
+            f"rlsA: {levan_result.get('rlsA_identity', 0):.2f}% identity, {levan_result.get('rlsA_coverage', 0):.2f}% coverage | "
+            f"rlsB: {levan_result.get('rlsB_identity', 0):.2f}% identity, {levan_result.get('rlsB_coverage', 0):.2f}% coverage | "
+            f"Similar to: {levan_result.get('strain_type', 'Unknown')}"
+        )
+    except Exception as e:
+        logging.error(f"Error formatting levan result: {e}")
+        return "Error formatting levan synthesis results"
 
 def remove_unnecessary_folders(output_dir: Path) -> None:
     folders_to_remove = ['CRISPR_finder', 'CRR_finder', 'plasmid_finder', 'resistance_finder']
