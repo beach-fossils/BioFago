@@ -15,7 +15,7 @@ def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_
 
     # Check if Docker is running
     try:
-        subprocess.run(['docker', 'ps'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(['sudo', 'docker', 'ps'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError:
         print("Error: Docker is not running. Please start Docker and try again.")
         return
@@ -30,7 +30,7 @@ def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_
 
     # Configure the Prokka command for the specific fasta file
     prokka_command = [
-        'docker', 'run', '--rm',
+        'sudo', 'docker', 'run', '--rm',
         '--platform', 'linux/amd64',
         '-v', f'{Path(fasta_file).parent}:/reference_crispr',
         '-v', f'{output_path}:/output',
