@@ -113,9 +113,8 @@ class LevanGenesClassifier:
             logger.error(f"Unexpected error running BLAST: {e}")
             return 0.0, 0.0
 
-
     def analyze_strain(self, sequences: Dict[str, str], strain_id: str) -> Dict:
-        """Analyze strain with improved sequence handling - single BLAST per reference"""
+        """Analyze strain with correct BLAST search direction"""
         logger.info(f"Analyzing strain: {strain_id}")
 
         results = {
@@ -128,76 +127,78 @@ class LevanGenesClassifier:
             'rlsB_coverage': 0.0
         }
 
-        # Concatenate all sequences with spacers
-        combined_sequence = 'N' * 100  # Spacer between sequences
-        for seq_id, sequence in sequences.items():
-            combined_sequence += sequence + 'N' * 100
-
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir_path = Path(temp_dir)
-            query_file = temp_dir_path / "combined_query.fasta"
 
-            # Write combined query sequence once
-            with open(query_file, 'w') as f:
-                f.write(f">combined_query\n{combined_sequence}")
+            # Write genome sequences to a single file
+            genome_file = temp_dir_path / "genome.fasta"
+            with open(genome_file, 'w') as f:
+                for seq_id, sequence in sequences.items():
+                    f.write(f">{seq_id}\n{sequence}\n")
 
-            # Check against each reference gene once
+            # Process each reference gene
             for gene in ['lsc', 'rlsA', 'rlsB']:
-                logger.debug(f"Comparing against {gene} reference")
-
-                cmd = [
-                    'blastn',
-                    '-query', str(query_file),
-                    '-subject', str(self.reference_files[gene]),
-                    '-outfmt', '6 qseqid sseqid pident length qlen slen',
-                    '-max_target_seqs', '5',  # Allow multiple hits
-                    '-task', 'blastn',
-                    '-dust', 'no'
-                ]
-
                 try:
-                    result = subprocess.run(cmd,
-                                            capture_output=True,
-                                            text=True,
-                                            check=True)
+                    cmd = [
+                        'blastn',
+                        '-query', str(self.reference_files[gene]),  # Reference gene as query
+                        '-subject', str(genome_file),  # Genome as subject
+                        '-outfmt', '6 qseqid sseqid pident length qlen slen sstart send',
+                        '-max_target_seqs', '5',
+                        '-task', 'blastn',
+                        '-dust', 'no',
+                        '-evalue', '1e-10',
+                        '-perc_identity', '85'
+                    ]
+
+                    logger.debug(f"Running BLAST command for {gene}: {' '.join(cmd)}")
+
+                    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
                     if result.stdout.strip():
-                        # Process all hits for this gene
                         hits = result.stdout.strip().split('\n')
                         best_identity = 0.0
                         best_coverage = 0.0
+                        query_length = None
 
                         for hit in hits:
                             fields = hit.split('\t')
-                            if len(fields) >= 6:
+                            if len(fields) >= 8:
                                 identity = float(fields[2])
                                 alignment_length = int(fields[3])
-                                subject_length = int(fields[5])
+                                query_length = int(fields[4])  # Reference gene length
+                                sstart = min(int(fields[6]), int(fields[7]))
+                                send = max(int(fields[6]), int(fields[7]))
 
-                                coverage = (alignment_length / subject_length) * 100
+                                # Track best identity
+                                best_identity = max(best_identity, identity)
 
-                                if coverage > best_coverage or (coverage == best_coverage and identity > best_identity):
-                                    best_coverage = coverage
-                                    best_identity = identity
+                                # Calculate coverage of reference gene
+                                coverage = (alignment_length / query_length) * 100
+                                best_coverage = max(best_coverage, coverage)
 
-                        logger.info(f"{gene}: Identity={best_identity:.1f}%, Coverage={best_coverage:.1f}%")
-                        results[f'{gene}_identity'] = best_identity
-                        results[f'{gene}_coverage'] = best_coverage
+                        if best_coverage > 0:
+                            logger.info(
+                                f"{gene} hits found:\n"
+                                f"  Best Identity: {best_identity:.1f}%\n"
+                                f"  Best Coverage: {best_coverage:.1f}%"
+                            )
+                            results[f'{gene}_identity'] = best_identity
+                            results[f'{gene}_coverage'] = best_coverage
                     else:
                         logger.warning(f"No BLAST hits found for {gene}")
 
                 except subprocess.CalledProcessError as e:
-                    logger.error(f"BLAST error for {gene}: {e}")
-                    logger.error(f"BLAST stderr: {e.stderr}")
+                    logger.error(f"BLAST error for {gene}: {e.stderr}")
                 except Exception as e:
-                    logger.error(f"Unexpected error processing {gene}: {e}")
+                    logger.error(f"Error processing {gene}: {e}")
 
-        # Determine strain type based on results
-        results['strain_type'] = self._classify_strain_type(
-            results['lsc_identity'], results['lsc_coverage'],
-            results['rlsA_identity'], results['rlsA_coverage'],
-            results['rlsB_identity'], results['rlsB_coverage']
-        )
+            # Classify strain based on results
+            results['strain_type'] = self._classify_strain_type(
+                results['lsc_identity'], results['lsc_coverage'],
+                results['rlsA_identity'], results['rlsA_coverage'],
+                results['rlsB_identity'], results['rlsB_coverage']
+            )
 
         return results
 
@@ -370,7 +371,7 @@ def format_levan_result(levan_result: dict) -> str:
 if __name__ == "__main__":
     try:
         # Single genome analysis
-        genome_path = "/Users/josediogomoura/Documents/BioFago/BioFago/Erw_pyr_ref/Erwinia_endophytica_GCF_009295515.1.fasta"
+        genome_path = "/Users/josediogomoura/Documents/BioFago/BioFago/test-data/random_ea_genomes/GCF_000367685.1_ASM36768v2_genomic.fasta"
         results = run_levan_analysis(
             genome_path=genome_path,
             output_file="/Users/josediogomoura/Documents/BioFago/BioFago/test-data/levan/results.csv"
