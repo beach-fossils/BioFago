@@ -14,14 +14,64 @@ def create_species_finder_folder(genomes_folder_path: Path) -> Path:
     species_finder_path.mkdir(exist_ok=True)
     return species_finder_path
 
+
 def run_species_metrics_for_all(genomes_folder_path: Path, species_finder_path: Path, threshold_species: float):
     """Run species metrics finder for all genomes in their individual folders."""
-    for genome_file in genomes_folder_path.glob('*.fasta'):
-        logging.info(f"Processing genome file: {genome_file}")
+    logging.info(f"Starting species metrics analysis in {genomes_folder_path}")
+
+    # Find all FASTA files in both root and subdirectories
+    genome_files = []
+
+    # Look for files directly in the genomes folder
+    for fasta_file in genomes_folder_path.glob('*.fasta'):
+        if fasta_file.is_file():
+            genome_files.append(fasta_file)
+
+    # Look in subdirectories
+    for subdir in genomes_folder_path.iterdir():
+        if subdir.is_dir():
+            for fasta_file in subdir.glob('*.fasta'):
+                if fasta_file.is_file():
+                    genome_files.append(fasta_file)
+
+    if not genome_files:
+        logging.error(f"No FASTA files found in {genomes_folder_path} or its subdirectories")
+        return
+
+    logging.info(f"Found {len(genome_files)} genome files to process")
+
+    # Process each genome
+    for genome_file in genome_files:
+        logging.info(f"Processing genome file for species analysis: {genome_file}")
         try:
-            new_run_species_metrics_finder(genome_file, species_finder_path, threshold_species)
+            # Create output directory if it doesn't exist
+            species_finder_path.mkdir(parents=True, exist_ok=True)
+
+            # Run metrics finder for this genome
+            new_run_species_metrics_finder(
+                single_sequence_path=genome_file,
+                species_finder_path=species_finder_path,
+                threshold_species=threshold_species
+            )
+
+            # Verify results
+            output_file = species_finder_path / f"{genome_file.stem}.csv"
+            if output_file.exists():
+                try:
+                    df = pd.read_csv(output_file)
+                    species = df['Species'].iloc[0] if 'Species' in df.columns else 'Unknown'
+                    ani = df['ANI'].iloc[0] if 'ANI' in df.columns else 0.0
+                    logging.info(f"Species assignment for {genome_file.name}: {species} (ANI: {ani})")
+                except Exception as e:
+                    logging.error(f"Error reading species results for {genome_file.name}: {e}")
+            else:
+                logging.error(f"No results file generated for {genome_file.name}")
+
         except Exception as e:
-            logging.error(f"Error in new_run_species_metrics_finder for {genome_file}: {e}")
+            logging.error(f"Error in species metrics finder for {genome_file}: {e}")
+            logging.exception("Exception details:")
+
+    logging.info("Completed species metrics analysis for all genomes")
 
 def create_individual_folders(genomes_folder: Path) -> Path:
     """Move each genome to its individual folder, preserving the original file name."""
