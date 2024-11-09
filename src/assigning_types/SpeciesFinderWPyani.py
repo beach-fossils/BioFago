@@ -119,9 +119,9 @@ class OptimizedLocalANIExecutor:
         base_dir = self.input_dir.parent.absolute()
         genome_folder_name = self.single_sequence_path.parent.name
 
-        # Enhanced Docker command with better volume mounting
+
         docker_command = (
-            f"docker run --rm "
+            f"sudo docker run --rm "
             f"--platform linux/amd64 "
             f"-v {base_dir}:/host_dir:rw "  # Added explicit rw permissions
             f"leightonpritchard/average_nucleotide_identity:v0.2.9 "
@@ -130,7 +130,6 @@ class OptimizedLocalANIExecutor:
             f"-m ANIm --workers 4 "  # Added worker specification
             f"-g --gformat eps"
         )
-
         logging.info(f"Executing docker command: {docker_command}")
 
         try:
