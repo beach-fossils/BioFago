@@ -59,8 +59,8 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
                                    threshold_species: float = 0.95):
     setup_logging()
 
-    input_path = Path(single_sequence_path)
-    species_finder_path = Path(species_finder_path)
+    input_path = Path(single_sequence_path).resolve()
+    species_finder_path = Path(species_finder_path).resolve()
 
     paths = generate_paths(input_path, species_finder_path)
     ensure_directories(paths)
@@ -71,29 +71,33 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
         stats = fasta_stats.generate_assembly_statistics()
         df_stats = pd.DataFrame([stats])
 
-        # Prepare for ANI analysis
-        ani_executor = OptimizedLocalANIExecutor(single_sequence_path, REFERENCE_GENOMES, paths['ani_tab_file'],
-                                                 threshold_species)
+        # Create a directory for the genome in the species finder folder
+        genome_dir = species_finder_path / input_path.stem
+        genome_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(input_path, genome_dir / input_path.name)
+
+        # Prepare for ANI analysis with better path handling
+        ani_executor = OptimizedLocalANIExecutor(
+            single_sequence_path=genome_dir / input_path.name,
+            genomes_directory=REFERENCE_GENOMES,
+            results_file=paths['ani_tab_file'],
+            threshold=threshold_species
+        )
+
         ani_success = ani_executor.execute()
 
-        if ani_success:
-            logging.info("Local ANI analysis completed.")
-            if ani_executor.match_found:
-                species = ani_executor.best_match['species']
-                ani_value = ani_executor.best_match['ani']
-                logging.info(f"Match found: {species} with ANI value {ani_value:.4f}")
-            else:
-                species = "Unknown"
-                ani_value = 0.0
-                logging.info(f"No match found above threshold. Best match: {ani_executor.best_match['species']} with ANI {ani_executor.best_match['ani']:.4f}")
-
-            # Add species information to the DataFrame
-            df_stats['Species'] = species
-            df_stats['ANI'] = ani_value
+        if ani_success and ani_executor.best_match['species'] != 'Unknown':
+            species = ani_executor.best_match['species']
+            ani_value = ani_executor.best_match['ani']
+            logging.info(f"Match found: {species} with ANI value {ani_value:.4f}")
         else:
-            logging.warning("ANI analysis failed. Setting species as 'Unknown'.")
-            df_stats['Species'] = 'Unknown'
-            df_stats['ANI'] = 0.0
+            species = "Unknown"
+            ani_value = ani_executor.best_match['ani']
+            logging.warning(f"No definitive species match. Best match had ANI: {ani_value:.4f}")
+
+        # Add species information to the DataFrame
+        df_stats['Species'] = species
+        df_stats['ANI'] = ani_value
 
         # Ensure the output file doesn't exist before writing
         if paths['species_output_file'].exists():
@@ -104,13 +108,13 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
 
     except Exception as e:
         logging.error(f"Error in run_species_metrics_finder: {e}")
+        logging.exception("Exception details:")
         df_stats = pd.DataFrame([{
             'Species': 'Unknown',
             'ANI': 0.0,
             'Error': str(e)
         }])
         df_stats.to_csv(paths['species_output_file'], index=False)
-        logging.info(f"Results saved to {paths['species_output_file']} with Unknown species due to error")
 
     finally:
         cleanup_files(paths)
@@ -165,5 +169,6 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
 if __name__ == '__main__':
 
     pass
+
 
 
