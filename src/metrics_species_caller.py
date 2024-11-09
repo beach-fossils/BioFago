@@ -84,16 +84,12 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
             threshold=threshold_species
         )
 
-        ani_success = ani_executor.execute()
-
-        if ani_success and ani_executor.best_match['species'] != 'Unknown':
-            species = ani_executor.best_match['species']
-            ani_value = ani_executor.best_match['ani']
-            logging.info(f"Match found: {species} with ANI value {ani_value:.4f}")
-        else:
-            species = "Unknown"
-            ani_value = ani_executor.best_match['ani']
-            logging.warning(f"No definitive species match. Best match had ANI: {ani_value:.4f}")
+        # Skip ANI execution and set default results
+        # ani_success = ani_executor.execute()  # Comment out this line
+        ani_success = True  # Force success
+        species = "Not Analyzed (ANI Skipped)"
+        ani_value = 0.0
+        logging.info(f"Skipping ANI analysis for {input_path.stem}")
 
         # Add species information to the DataFrame
         df_stats['Species'] = species
