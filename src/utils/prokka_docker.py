@@ -30,7 +30,7 @@ def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_
 
     # Configure the Prokka command for the specific fasta file
     prokka_command = [
-        'sudo', 'docker', 'run', '--rm',
+        'docker', 'run', '--rm',
         '--platform', 'linux/amd64',
         '-v', f'{Path(fasta_file).parent}:/reference_crispr',
         '-v', f'{output_path}:/output',
