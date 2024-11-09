@@ -110,10 +110,10 @@ def copy_gbk_files(base_folder, destination_folder):
 
 def main():
     # Define the genomes and output directories
-    folder_with_fastas = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/extracted_seq'
-    base_output_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/prokka'
+    folder_with_fastas = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/extracted'
+    base_output_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/annotated'
     locus_tag_prefix = 'PREFIX'
-    custom_db_path = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/T3SS/annotation/T3SS_II/PROKKA_10252024.gbk'
+    custom_db_path = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/ref_region/PROKKA_11052024.gbk'
 
     # Get all .fasta files in the folder
     fasta_files = [f for f in os.listdir(folder_with_fastas) if f.endswith('.fasta')]
@@ -131,9 +131,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-    # base_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/cluster_genes/flag/prokka_results/flag1_IV/prokka_results'
-    # destination_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/cluster_genes/flag/prokka_results/flag1_IV/all_gbk'
-    #
-    # rename_gbk_files(base_folder)
-    # copy_gbk_files(base_folder, destination_folder)
+    # main()
+    base_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/annotated'
+    destination_folder = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/annotated/all_gbk'
+
+    rename_gbk_files(base_folder)
+    copy_gbk_files(base_folder, destination_folder)
