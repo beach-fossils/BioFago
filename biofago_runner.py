@@ -49,7 +49,110 @@ def create_temp_dir():
     temp_dir = tempfile.mkdtemp()
     os.chmod(temp_dir, 0o755)  # Ensures read and execute permissions for all users
     return Path(temp_dir)
+    
+def process_results(results: List[Dict], species_finder_path: Path, extract_annotate_results: List,
+                    clade_classifier: CRISPRCladeClassifier) -> List[Dict]:
+    final_results = []
+    processed_genomes = set()
 
+    logging.info(f"Starting process_results with {len(results)} results")
+
+    # Create a mapping between short and full genome names
+    genome_name_mapping = {}
+    for annotation_result in extract_annotate_results:
+        if len(annotation_result) >= 6:
+            full_genome_name = annotation_result[0]
+            short_name = full_genome_name.split('.')[0]  
+            genome_name_mapping[short_name] = full_genome_name
+            genome_name_mapping[full_genome_name] = full_genome_name  
+
+    for result in results:
+        if not result:
+            continue
+
+        genome_name = result.get('name')
+        if not genome_name or genome_name in processed_genomes:
+            continue
+
+        logging.info(f"Processing results for genome: {genome_name}")
+        processed_genomes.add(genome_name)
+
+        try:
+            # Process species information
+            species_csv = species_finder_path / f"{genome_name}.csv"
+            if species_csv.exists():
+                try:
+                    df = pd.read_csv(species_csv)
+                    result.update({
+                        'species': df['Species'].iloc[0] if 'Species' in df.columns else 'Unknown',
+                        'ANI_species': round(float(df['ANI'].iloc[0]), 2) if 'ANI' in df.columns else 0.0,
+                    })
+                except Exception as e:
+                    logging.error(f"Error reading species CSV for {genome_name}: {str(e)}")
+                    result.update({'species': 'Unknown', 'ANI_species': 0.0})
+            else:
+                result.update({'species': 'Unknown', 'ANI_species': 0.0})
+
+            # Initialize locus fields with Unknown status
+            locus_types = {
+                'types_capsule': 'capsule_locus',
+                'types_cellulose': 'cellulose_locus',
+                'types_lps': 'lps_locus',
+                'types_srl': 'sorbitol_locus',
+                'types_flag_I': 'flag_i_locus',
+                'types_flag_II': 'flag_ii_locus',
+                'types_flag_III': 'flag_iii_locus',
+                'types_flag_IV': 'flag_iv_locus',
+                'types_T3SS_I': 't3ss_i_locus',
+                'types_T3SS_II': 't3ss_ii_locus',
+                'types_T6SS_I': 't6ss_i_locus',
+                'types_T6SS_II': 't6ss_ii_locus',
+                'types_flag3': 'flag3_locus'
+            }
+
+            # Initialize all locus fields as Unknown
+            for locus_key in locus_types.values():
+                result[locus_key] = '(Unknown)'
+
+            # Get the full genome name from mapping
+            full_genome_name = genome_name_mapping.get(genome_name, genome_name)
+
+            # Process annotation results
+            for annotation_result in extract_annotate_results:
+                if len(annotation_result) >= 6:
+                    ann_genome, ref_type, type_locus, final_type, flagged_genes, _ = annotation_result
+                    # Check both the full name and short name
+                    if (ann_genome == full_genome_name or ann_genome.split('.')[0] == genome_name):
+                        if ref_type in locus_types:
+                            locus_key = locus_types[ref_type]
+                            logging.info(f"Processing {ref_type} for {genome_name} with type_locus={type_locus}, final_type={final_type}")
+                            formatted_type = f"{type_locus} ({final_type})"
+                            if flagged_genes:
+                                if isinstance(flagged_genes, list):
+                                    flagged_genes = ', '.join(flagged_genes)
+                                formatted_type += f" - Flagged genes: {flagged_genes}"
+                            result[locus_key] = formatted_type.strip()
+                            logging.info(f"Added {ref_type} information for {genome_name}: {formatted_type}")
+
+            # Process CRISPR clade classification
+            genotype = result.get('crispr_genotype', '')
+            spacers = result.get('crispr_spacers', '')
+            spacer_counts = parse_spacer_counts(spacers)
+            clade, score, spacer_score, genotype_score, confidence_level, subgroup = clade_classifier.determine_clade(
+                genotype, spacer_counts)
+            result.update({
+                'clade': f"{clade} {subgroup}".strip() if clade != "Unknown" else clade,
+                'clade_confidence_score': round(score, 2),
+                'clade_confidence_level': confidence_level
+            })
+
+            final_results.append(result)
+            logging.info(f"Successfully processed genome {genome_name} with clade {clade}")
+
+        except Exception as e:
+            logging.error(f"Error processing genome {genome_name}: {str(e)}")
+
+    return final_results
 
 def check_docker() -> bool:
     """Check if Docker is running and accessible."""
