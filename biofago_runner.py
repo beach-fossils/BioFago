@@ -114,25 +114,32 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
             for locus_key in locus_types.values():
                 result[locus_key] = '(Unknown)'
 
-            # Get the full genome name from mapping
-            full_genome_name = genome_name_mapping.get(genome_name, genome_name)
-
-            # Process annotation results
-            for annotation_result in extract_annotate_results:
-                if len(annotation_result) >= 6:
-                    ann_genome, ref_type, type_locus, final_type, flagged_genes, _ = annotation_result
-                    # Check both the full name and short name
-                    if (ann_genome == full_genome_name or ann_genome.split('.')[0] == genome_name):
-                        if ref_type in locus_types:
-                            locus_key = locus_types[ref_type]
-                            logging.info(f"Processing {ref_type} for {genome_name} with type_locus={type_locus}, final_type={final_type}")
-                            formatted_type = f"{type_locus} ({final_type})"
-                            if flagged_genes:
-                                if isinstance(flagged_genes, list):
-                                    flagged_genes = ', '.join(flagged_genes)
-                                formatted_type += f" - Flagged genes: {flagged_genes}"
-                            result[locus_key] = formatted_type.strip()
-                            logging.info(f"Added {ref_type} information for {genome_name}: {formatted_type}")
+            # Process locus information from types_finder directory
+            types_finder_path = species_finder_path.parent / 'types_finder'
+            genome_types_dir = types_finder_path / f"fastas_{genome_name}"
+            
+            if genome_types_dir.exists():
+                for type_folder, result_key in locus_types.items():
+                    type_dir = genome_types_dir / type_folder
+                    if type_dir.exists():
+                        final_csv = type_dir / "final.csv"
+                        if final_csv.exists():
+                            try:
+                                df = pd.read_csv(final_csv)
+                                if not df.empty:
+                                    type_info = df.iloc[0]
+                                    locus_name = type_info.get('Locus', '')
+                                    assigned_type = type_info.get('Type', '')
+                                    flagged_genes = type_info.get('Flagged Genes', '')
+                                    
+                                    formatted_type = f"{locus_name} ({assigned_type})"
+                                    if flagged_genes and str(flagged_genes) != 'nan':
+                                        formatted_type += f" - Flagged genes: {flagged_genes}"
+                                    
+                                    result[result_key] = formatted_type.strip()
+                                    logging.info(f"Added {type_folder} information for {genome_name}: {formatted_type}")
+                            except Exception as e:
+                                logging.error(f"Error reading final CSV for {type_folder} in {genome_name}: {str(e)}")
 
             # Process CRISPR clade classification
             genotype = result.get('crispr_genotype', '')
