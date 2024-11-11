@@ -112,8 +112,6 @@ def process_genome_with_reference(
 
 def process_genome(genome_dir: str, base_folder: str) -> List[tuple]:
     """Process a single genome against all reference files."""
-    logging.info(f"Processing genome directory: {genome_dir}")
-    
     genome_files = [f for f in os.listdir(genome_dir) if f.endswith(".fasta")]
     if not genome_files:
         logging.warning(f"No fasta files found in {genome_dir}")
@@ -127,17 +125,11 @@ def process_genome(genome_dir: str, base_folder: str) -> List[tuple]:
     results = []
     for gb_folder in REFERENCE_TYPES.iterdir():
         if gb_folder.is_dir():
-            logging.info(f"Processing reference folder: {gb_folder}")
             for gb_file in gb_folder.glob("*.gb"):
-                logging.info(f"Processing reference file: {gb_file}")
                 result = process_genome_with_reference(genome_dir, input_genome, gb_file, genome_output_folder)
                 if result:
-                    logging.info(f"Got result for {genome_name} with {gb_file}: {result}")
                     results.append(result)
-                else:
-                    logging.warning(f"No result for {genome_name} with {gb_file}")
 
-    logging.info(f"Total results for genome {genome_name}: {len(results)}")
     return results
 
 
