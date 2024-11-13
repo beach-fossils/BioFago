@@ -1,4 +1,4 @@
-<tool id="biofago_erwinia" name="BioFago Erwinia Analysis" version="0.1.0" profile="20.05">
+<tool id="ErwinATyper" name="ErwinATyper Erwinia amylovora genomic analysis" version="0.1.0" profile="20.05">
     <description>Analyze Erwinia genomes for various genetic elements</description>
     <requirements>
         <requirement type="package" version="3.9">python</requirement>
@@ -37,7 +37,7 @@
     &&
     echo "Attempting to create zip file..." 1>&2
     &&
-    python '$__tool_directory__/create_zip.py' '.' '$sequence_archive'
+    python '$__tool_directory__/create_zip.py' 'types_finder' '$sequence_archive'
     &&
     echo "Zip creation attempt finished" 1>&2
     &&
@@ -96,37 +96,63 @@
                     <has_archive_member path="types_finder/.*/types_srl/PROKKA_.*\.gbk" />
                     <has_archive_member path="types_finder/.*/types_lps/PROKKA_.*\.fna" />
                     <has_archive_member path="types_finder/.*/types_lps/PROKKA_.*\.gbk" />
+                    <has_archive_member path="types_finder/.*/types_T3SS_I/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_T3SS_I/PROKKA_.*\.gbk" />
+                    <has_archive_member path="types_finder/.*/types_T3SS_II/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_T3SS_II/PROKKA_.*\.gbk" />
+                    <has_archive_member path="types_finder/.*/types_flag3/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_flag3/PROKKA_.*\.gbk" />
+                    <has_archive_member path="types_finder/.*/types_flag_I/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_flag_I/PROKKA_.*\.gbk" />
+                    <has_archive_member path="types_finder/.*/types_flag_II/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_flag_II/PROKKA_.*\.gbk" />
+                    <has_archive_member path="types_finder/.*/types_flag_III/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_flag_III/PROKKA_.*\.gbk" />
+                    <has_archive_member path="types_finder/.*/types_flag_IV/PROKKA_.*\.fna" />
+                    <has_archive_member path="types_finder/.*/types_flag_IV/PROKKA_.*\.gbk" />
                 </assert_contents>
             </output>
         </test>
     </tests>
 
     <help><![CDATA[
-        This tool analyzes Erwinia genomes for various genetic elements including plasmids, CRISPR systems, and antibiotic resistance genes.
+This tool analyzes Erwinia genomes for various genetic elements including plasmids, CRISPR systems, and antibiotic resistance genes.
 
-        **Inputs**
+**Inputs**
 
-        - A genome file in FASTA format
-        - ANI threshold for species assignment
-        - Option to keep sequence loci
-        - Logging level
+* A genome file in FASTA format
+* ANI threshold for species assignment
+* Option to keep sequence loci
+* Logging level
 
-        **Outputs**
+**Outputs**
 
-        - A CSV file containing analysis results for the input genome
-        - **Sequence Archive**: When "Keep sequence loci" is selected, a zip archive containing the sequences will be available for download. This archive preserves the folder structure and can be downloaded for further analysis outside Galaxy.
+* A CSV file containing analysis results for the input genome
+* **Sequence Archive**: When "Keep sequence loci" is selected, a zip archive containing the sequences will be available for download. This archive preserves the folder structure and can be downloaded for further analysis outside Galaxy.
 
-        The sequence archive includes the following structure:
-        - types_finder/
-          - [Genome Name]/
-            - types_capsule/
-            - types_cellulose/
-            - types_lps/
-            - types_srl/
-              - PROKKA_[DATE].fna
-              - PROKKA_[DATE].gbk
+The sequence archive includes the following structure::
 
-        **Note**: If the sequence archive creation fails, the tool will continue to run and provide the CSV output. Check the tool's log for any warnings or errors related to the archive creation.
+    types_finder/
+        [Genome Name]/
+            types_capsule/        # Capsule biosynthesis locus
+            types_cellulose/      # Cellulose biosynthesis locus
+            types_lps/            # Lipopolysaccharide biosynthesis locus
+            types_srl/            # Sorbitol metabolism locus
+            types_T3SS_I/         # Type III Secretion System I
+            types_T3SS_II/        # Type III Secretion System II
+            types_flag3/          # Flagellar system 3
+            types_flag_I/         # Flagellar system I
+            types_flag_II/        # Flagellar system II
+            types_flag_III/       # Flagellar system III
+            types_flag_IV/        # Flagellar system IV
+                PROKKA_[DATE].fna # Nucleotide sequences
+                PROKKA_[DATE].gbk # GenBank format annotations
+
+Each type directory contains:
+* .fna files: Nucleotide sequences in FASTA format
+* .gbk files: Complete annotations in GenBank format
+
+**Note**: If the sequence archive creation fails, the tool will continue to run and provide the CSV output. Check the tool's log for any warnings or errors related to the archive creation.
     ]]></help>
 
     <citations>
