@@ -1,4 +1,4 @@
-<tool id="ErwinATyper" name="ErwinATyper Erwinia amylovora genomic analysis" version="0.1.0" profile="20.05">
+<tool id="ErwinATyper" name="ErwinATyper Erwinia amylovora genomic analysis" version="0.2.0" profile="20.05">
     <description>Analyze Erwinia genomes for various genetic elements</description>
     <requirements>
         <requirement type="package" version="3.9">python</requirement>
