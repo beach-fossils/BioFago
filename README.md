@@ -1,6 +1,6 @@
-# BioFago_Erwinia Tool
+# ErwinATyper Tool
 
-BioFago_Erwinia is a comprehensive genomic analysis tool designed for processing and analyzing bacterial genomes, specifically for *Erwinia amylovora*, the causative agent of fire blight in rosaceous plants. This tool focuses on:
+ErwinATyper is a comprehensive genomic analysis tool designed for processing and analyzing bacterial genomes, specifically for *Erwinia amylovora*, the causative agent of fire blight in rosaceous plants. This tool focuses on:
 
 1. Relevant locus typing (capsule, cellulose, LPS, and sorbitol loci)
 2. Plasmid detection
@@ -105,7 +105,7 @@ The development that has been made until now relies on two Docker images for som
 
 ## Usage
 
-You can run BioFago_Erwinia using command-line arguments.
+You can run ErwinATyper using command-line arguments.
 
 ### Using Command-Line Arguments
 
