@@ -153,15 +153,43 @@ def copy_fasta_files(input_path: Path, temp_genomes_folder: Path) -> List[Path]:
 
 def copy_types_folders(source_folder: Path, destination_folder: Path) -> None:
     """Copy type-specific folders to the destination."""
-    types_folders = ['types_capsule', 'types_cellulose', 'types_lps', 'types_srl']
+    types_folders = [
+        'types_capsule', 'types_cellulose', 'types_lps', 'types_srl',
+        'types_T3SS_I', 'types_T3SS_II', 'types_flag3',
+        'types_flag_I', 'types_flag_II', 'types_flag_III', 'types_flag_IV'
+    ]
+    
+    folders_copied = 0
+    logging.info(f"Starting copy of type folders from {source_folder} to {destination_folder}")
+    
+    if not source_folder.exists():
+        logging.error(f"Source folder does not exist: {source_folder}")
+        return
+    
     for genome_folder in source_folder.iterdir():
         if genome_folder.is_dir():
+            logging.info(f"Processing genome folder: {genome_folder}")
             for types_folder in types_folders:
                 source_path = genome_folder / types_folder
                 if source_path.exists():
                     dest_path = destination_folder / genome_folder.name / types_folder
-                    shutil.copytree(source_path, dest_path, dirs_exist_ok=True)
-    logging.info(f"Copied types folders to {destination_folder}")
+                    try:
+                        shutil.copytree(source_path, dest_path, dirs_exist_ok=True)
+                        folders_copied += 1
+                        logging.info(f"Successfully copied {types_folder} from {genome_folder.name}")
+                        # Log contents of the copied folder
+                        if dest_path.exists():
+                            files = list(dest_path.glob('*'))
+                            logging.info(f"Contents of {dest_path}: {[f.name for f in files]}")
+                    except Exception as e:
+                        logging.error(f"Error copying {source_path} to {dest_path}: {str(e)}")
+                else:
+                    logging.info(f"Folder does not exist: {source_path}")
+    
+    if folders_copied == 0:
+        logging.warning("No type folders were copied!")
+    else:
+        logging.info(f"Successfully copied {folders_copied} type folders")
 
 
 def cleanup_analysis_folders(output_dir: Path, keep_sequence_loci: bool) -> None:
