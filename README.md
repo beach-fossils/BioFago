@@ -1,13 +1,15 @@
-# BioFago_Erwinia Tool
+# ErwinATyper Tool
 
-BioFago_Erwinia is a comprehensive genomic analysis tool designed for processing and analyzing bacterial genomes, specifically for *Erwinia amylovora*, the causative agent of fire blight in rosaceous plants. This tool focuses on:
+A comprehensive genomic analysis tool for *Erwinia amylovora* providing:
 
-1. Relevant locus typing (capsule, cellulose, LPS, and sorbitol loci)
-2. Plasmid detection
-3. Streptomycin resistance gene identification
-4. CRISPR genotype analysis
+- Multi-locus sequence typing (MLST) analysis
+- Locus typing (capsule, cellulose, LPS, sorbitol)
+- Plasmid detection
+- Streptomycin resistance gene identification
+- CRISPR genotype analysis
+- Type III/VI secretion system variant identification
+- Identification of flagellar systems
 
-BioFago provides researchers and plant pathologists with a powerful platform for in-depth genomic characterisation of *E. amylovora* strains, facilitating studies on population dynamics, virulence factors, and antibiotic resistance in the context of fire blight management.
 
 ## Prerequisites
 
@@ -105,7 +107,7 @@ The development that has been made until now relies on two Docker images for som
 
 ## Usage
 
-You can run BioFago_Erwinia using command-line arguments.
+You can run ErwinATyper using command-line arguments.
 
 ### Using Command-Line Arguments
 
@@ -124,6 +126,7 @@ Available options:
 --output_dir: Specify the output directory for results (mandatory)
 --keep_sequence_loci: Flag to retain sequences for each analyzed locus (optional)
 --threshold_species: Set the ANI threshold for species assignment (optional, default: 0.95)
+--skip_species_assignment: Flag to skip the module to identify the species (optional)
 --log_level: Set logging verbosity (optional, choices: DEBUG, INFO, WARNING, ERROR, CRITICAL, default: INFO)
 ```
 
@@ -161,19 +164,8 @@ output_dir/
 
 ### Example `.csv` output
 
-For a comprehensive example of the analysis results, you can view a sample `all_results.csv` file in our GitHub repository:
+For a comprehensive example of the analysis results, you can view a sample `example.csv` output file in this GitHub repository:
 
 
-[Example all_results.csv](https://github.com/beach-fossils/BioFago/blob/main/test-data/csv/PRR1_INIAV.csv)
+[example.csv](https://github.com/beach-fossils/BioFago/blob/main/examples/example.csv)
 
-
-This example file demonstrates the structure and content of the BioFago analysis output, including:
-
-- Genome statistics (e.g., contig count, N50, GC content)
-- Species identification and ANI scores
-- Plasmid detection results
-- Streptomycin resistance gene information
-- CRISPR spacer counts and genotypes
-- Locus typing results for capsule, cellulose, LPS, and sorbitol loci
-
-Reviewing this example can help you understand the type and format of data produced by the BioFago tool.
