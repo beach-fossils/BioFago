@@ -105,13 +105,15 @@ class OptimizedLocalANIExecutor:
         self.genomes_directory = Path(genomes_directory)
         self.results_file = Path(results_file)
         self.input_dir = self.single_sequence_path.parent
-        self.output_dir = self.input_dir.parent / 'output'
+        self.output_dir = self.input_dir.parent / 'output'  # Docker's output directory
         self.threshold = threshold
         self.match_found = False
         self.best_match = {'species': 'Unknown', 'ani': 0.0}
 
     def run_pyani_docker(self):
         logging.info("Running ANI analysis using Docker...")
+
+        # Clean up any existing output directory
         if self.output_dir.exists():
             shutil.rmtree(self.output_dir)
         time.sleep(1)
@@ -119,29 +121,29 @@ class OptimizedLocalANIExecutor:
         base_dir = self.input_dir.parent.absolute()
         genome_folder_name = self.single_sequence_path.parent.name
 
+        # Split the Docker command into a list of arguments
+        docker_command = [
+            "docker", "run", "--rm",
+            "--platform", "linux/amd64",
+            "-v", f"{base_dir}:/host_dir:rw",
+            "leightonpritchard/average_nucleotide_identity:v0.2.9",
+            "-i", f"/host_dir/{genome_folder_name}",
+            "-o", "/host_dir/output",
+            "-m", "ANIm", "--workers", "4",
+            "-g", "--gformat", "eps"
+        ]
 
-        docker_command = (
-            f"sudo docker run --rm "
-            f"--platform linux/amd64 "
-            f"-v {base_dir}:/host_dir:rw "  # Added explicit rw permissions
-            f"leightonpritchard/average_nucleotide_identity:v0.2.9 "
-            f"-i /host_dir/{genome_folder_name} "
-            f"-o /host_dir/output "
-            f"-m ANIm --workers 4 "  # Added worker specification
-            f"-g --gformat eps"
-        )
-        logging.info(f"Executing docker command: {docker_command}")
+        logging.info(f"Executing docker command: {' '.join(docker_command)}")
 
         try:
             process = subprocess.run(
-                docker_command,
-                shell=True,
+                docker_command,  # Pass the command as a list
+                shell=False,  # Use shell=False
                 capture_output=True,
                 text=True,
                 check=True
             )
             logging.info("Docker ANI calculation completed successfully")
-            logging.debug(f"Docker output: {process.stdout}")
             return True
         except subprocess.CalledProcessError as e:
             logging.error(f"Docker command failed: {e.stderr}")
@@ -151,57 +153,81 @@ class OptimizedLocalANIExecutor:
             return False
 
     def process_output(self, reference_genome):
+        # Look for results in Docker's output directory
         results_path = self.output_dir / 'ANIm_percentage_identity.tab'
         if not results_path.exists():
             logging.warning(f"Expected result file not found: {results_path}")
             return False
 
-        df = pd.read_csv(results_path, sep='\t', index_col=0)
-        write_header = not self.results_file.exists()
-        df.to_csv(self.results_file, sep='\t', mode='a', header=write_header)
-        logging.info(f"Results appended to {self.results_file}")
+        try:
+            df = pd.read_csv(results_path, sep='\t', index_col=0)
+            ani_value = df.loc[reference_genome, self.single_sequence_path.stem]
+            species_name = self._extract_species_from_filename(reference_genome)
 
-        ani_value = df.loc[reference_genome, self.single_sequence_path.stem]
-        species_name = self._extract_species_from_filename(reference_genome)
+            # Update best match regardless of threshold
+            if ani_value > self.best_match['ani']:
+                self.best_match = {'species': species_name, 'ani': ani_value}
+                logging.info(f"New best match: {species_name} with ANI value {ani_value:.4f}")
 
-        if ani_value > self.best_match['ani']:
-            self.best_match = {'species': species_name, 'ani': ani_value}
+            # Set match_found if we meet the threshold
+            if ani_value >= self.threshold:
+                self.match_found = True
+                logging.info(f"Threshold met: {species_name} with ANI value {ani_value:.4f}")
 
-        if ani_value >= self.threshold:
-            self.match_found = True
-            logging.info(f"Match found: {species_name} with ANI value {ani_value:.4f} (>= {self.threshold})")
+            return True
 
-        return True
+        except Exception as e:
+            logging.error(f"Error processing ANI results: {e}")
+            return False
 
     def execute(self):
         if not self.input_dir.exists():
             logging.error(f"Input directory not found: {self.input_dir}")
             return False
 
-        erwinia_amylovora = next(self.genomes_directory.glob('Erwinia_amylovora*.fasta'), None)
-        if erwinia_amylovora and self._process_genome(erwinia_amylovora):
+        try:
+            # First try with Erwinia amylovora if present
+            erwinia_amylovora = next(self.genomes_directory.glob('Erwinia_amylovora*.fasta'), None)
+            if erwinia_amylovora:
+                self._process_genome(erwinia_amylovora)
+
+            # If no match found or ANI below threshold, try other genomes
+            if not self.match_found:
+                for genome_file in self.genomes_directory.glob('*.fasta'):
+                    if genome_file != erwinia_amylovora:
+                        self._process_genome(genome_file)
+                        if self.match_found:  # Stop if we find a match above threshold
+                            break
+
+            logging.info(f"Best match found: {self.best_match['species']} with ANI {self.best_match['ani']:.4f}")
             return True
 
-        for genome_file in self.genomes_directory.glob('*.fasta'):
-            if genome_file != erwinia_amylovora and self._process_genome(genome_file):
-                return True
-
-        logging.info(f"Best match found: {self.best_match['species']} with ANI {self.best_match['ani']:.4f}")
-        return True
+        except Exception as e:
+            logging.error(f"Error during execution: {e}")
+            return False
 
     def _process_genome(self, genome_file):
         try:
+            # Copy reference genome to input directory
             shutil.copy(genome_file, self.input_dir)
+
             if self.run_pyani_docker():
-                self.process_output(genome_file.stem)
-            return self.match_found
+                return self.process_output(genome_file.stem)
+            return False
+
         except Exception as e:
-            logging.error(f"Error during processing {genome_file.name}: {e}")
+            logging.error(f"Error processing {genome_file.name}: {e}")
+            return False
         finally:
-            (self.input_dir / genome_file.name).unlink(missing_ok=True)
-            if self.output_dir.exists():
-                shutil.rmtree(self.output_dir)
-        return False
+            # Clean up
+            try:
+                input_file = self.input_dir / genome_file.name
+                if input_file.exists():
+                    input_file.unlink()
+                if self.output_dir.exists():
+                    shutil.rmtree(self.output_dir)
+            except Exception as e:
+                logging.error(f"Error during cleanup: {e}")
 
     @staticmethod
     def _extract_species_from_filename(filename):

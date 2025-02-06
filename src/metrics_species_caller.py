@@ -1,3 +1,4 @@
+# At the top of metrics_species_caller.py
 import logging
 import shutil
 from pathlib import Path
@@ -5,20 +6,29 @@ import pandas as pd
 import time
 import subprocess
 from typing import List
-from assigning_types.assembly_statistics import FastaStatistics
-from assigning_types.SpeciesFinderWPyani import NewSpeciesTabModifier, OptimizedLocalANIExecutor
 
+from assigning_types.assembly_statistics import FastaStatistics, logger
+from assigning_types.SpeciesFinderWPyani import NewSpeciesTabModifier, OptimizedLocalANIExecutor
 
 # Dynamically determine the path to the reference types directory
 SCRIPT_DIR = Path(__file__).resolve().parent
 REFERENCE_GENOMES = SCRIPT_DIR.parents[0] / 'reference_real_species_genomes'
 
-LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-LOG_LEVEL = logging.DEBUG
+# Add logging to debug path resolution
+logging.info(f"SCRIPT_DIR: {SCRIPT_DIR}")
+logging.info(f"REFERENCE_GENOMES: {REFERENCE_GENOMES}")
+logging.info(f"REFERENCE_GENOMES exists: {REFERENCE_GENOMES.exists()}")
 
 
 def setup_logging():
-    logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
+    """Do not initialize logging again if it's already configured"""
+    if not logger.handlers:  # Only add handler if none exists
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        if not logger.level:  # Only set level if not already set
+            logger.setLevel(logging.INFO)
 
 
 def generate_paths(input_path: Path, species_finder_path: Path) -> dict:
@@ -56,17 +66,22 @@ def remove_empty_directories(paths: dict):
 
 
 def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_path: Path,
-                                   threshold_species: float = 0.95):
+                                   threshold_species: float = 0.95, skip_species_assignment: bool = False):
     setup_logging()
+    logger.info(f"[Species Analysis] Starting analysis for {single_sequence_path}")
+    logger.info(f"[Species Analysis] Skip assignment: {skip_species_assignment}")
 
     input_path = Path(single_sequence_path).resolve()
     species_finder_path = Path(species_finder_path).resolve()
+    logger.info(f"[Species Analysis] Input path resolved to: {input_path}")
+    logger.info(f"[Species Analysis] Species finder path resolved to: {species_finder_path}")
 
     paths = generate_paths(input_path, species_finder_path)
-    ensure_directories(paths)
+    logger.info(f"[Species Analysis] Generated paths: {paths}")
 
     try:
         # Run assembly statistics
+        logger.info(f"[Species Analysis] Running assembly statistics")
         fasta_stats = FastaStatistics(single_sequence_path)
         stats = fasta_stats.generate_assembly_statistics()
         df_stats = pd.DataFrame([stats])
@@ -75,46 +90,72 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
         genome_dir = species_finder_path / input_path.stem
         genome_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(input_path, genome_dir / input_path.name)
+        logger.info(f"[Species Analysis] Created and copied to {genome_dir}")
 
-        # Prepare for ANI analysis with better path handling
-        ani_executor = OptimizedLocalANIExecutor(
-            single_sequence_path=genome_dir / input_path.name,
-            genomes_directory=REFERENCE_GENOMES,
-            results_file=paths['ani_tab_file'],
-            threshold=threshold_species
-        )
+        if skip_species_assignment:
+            logger.info(f"[Species Analysis] Species assignment skipped for {input_path.stem}")
+            species = "Not Analyzed (Species Assignment Skipped)"
+            ani_value = 0.0
+        else:
+            try:
+                logger.info("[Species Analysis] Starting ANI analysis")
+                ani_executor = OptimizedLocalANIExecutor(
+                    single_sequence_path=genome_dir / input_path.name,
+                    genomes_directory=REFERENCE_GENOMES,
+                    results_file=paths['ani_tab_file'],
+                    threshold=threshold_species
+                )
+                logger.info(f"[Species Analysis] Reference genomes path: {REFERENCE_GENOMES}")
 
-        # Skip ANI execution and set default results
-        # ani_success = ani_executor.execute()  # Comment out this line
-        ani_success = True  # Force success
-        species = "Not Analyzed (ANI Skipped)"
-        ani_value = 0.0
-        logging.info(f"Skipping ANI analysis for {input_path.stem}")
+                ani_success = ani_executor.execute()
 
-        # Add species information to the DataFrame
+                # ----------------------------------------------------
+                if ani_success:
+                    species = ani_executor.best_match['species']
+                    ani_value = ani_executor.best_match['ani']
+                else:
+                    species = "ANI Analysis Failed"
+                    ani_value = 0.0
+                # ----------------------------------------------------
+
+                logger.info(f"[Species Analysis] ANI analysis completed for {input_path.stem} with status: {ani_success}")
+            except Exception as e:
+                logger.error(f"[Species Analysis] Error in ANI: {str(e)}")
+                logger.exception("[Species Analysis] Exception details:")
+                species = "ANI Analysis Error"
+                ani_value = 0.0
+
         df_stats['Species'] = species
         df_stats['ANI'] = ani_value
+        logger.info(f"[Species Analysis] Added species info: {species}, ANI: {ani_value}")
 
-        # Ensure the output file doesn't exist before writing
+        # Save results
         if paths['species_output_file'].exists():
             paths['species_output_file'].unlink()
+            logger.info("[Species Analysis] Removed existing output file")
 
         df_stats.to_csv(paths['species_output_file'], index=False)
-        logging.info(f"Results saved to {paths['species_output_file']}")
+        logger.info(f"[Species Analysis] Results saved to {paths['species_output_file']}")
 
     except Exception as e:
-        logging.error(f"Error in run_species_metrics_finder: {e}")
-        logging.exception("Exception details:")
+        logger.error(f"[Species Analysis] Error: {str(e)}")
+        logger.exception("[Species Analysis] Full exception details:")
         df_stats = pd.DataFrame([{
             'Species': 'Unknown',
             'ANI': 0.0,
             'Error': str(e)
         }])
         df_stats.to_csv(paths['species_output_file'], index=False)
+        logger.info("[Species Analysis] Saved error results")
 
     finally:
+        logger.info("[Species Analysis] Starting cleanup")
         cleanup_files(paths)
         remove_empty_directories(paths)
+        logger.info("[Species Analysis] Cleanup completed")
+
+    return df_stats
+
 
 # def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_path: Path,
 #                                    threshold_species: float = 0.95):
