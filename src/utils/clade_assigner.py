@@ -1,3 +1,4 @@
+import logging
 import re
 import csv
 import os
@@ -38,13 +39,33 @@ class CRISPRCladeClassifier:
             return list(csv.DictReader(file))
 
     def parse_crispr_genotype(self, genotype_str: str) -> Dict[str, Dict[str, Union[str, float]]]:
+        logging.info(f"Parsing genotype string: {genotype_str}")
         crr_data = {}
+
+        if not genotype_str or genotype_str.lower() == 'none':
+            logging.warning("Empty or None genotype string")
+            return crr_data
+
+        # Remove "CRR: " prefix if present
+        genotype_str = re.sub(r'^CRR:\s*', '', genotype_str)
+
+        # Split by semicolon and process each part
         for crr_info in genotype_str.split(';'):
             crr_info = crr_info.strip()
-            match = re.match(r'CRR(\d+)\s*-?\s*(.+),\s*Score:\s*([\d.]+)', crr_info)
+            # Match both formats
+            pattern = r'CRR(\d+)\s*-?\s*(?:Group:\s*)?(.+?),\s*Score:\s*([\d.]+)'
+            match = re.match(pattern, crr_info)
+
             if match:
                 crr_num, info, score = match.groups()
+                # Add "Group: " prefix if not present
+                if not info.startswith('Group:'):
+                    info = f"Group: {info}"
                 crr_data[f'CRR{crr_num}'] = {'info': info, 'score': float(score)}
+                logging.info(f"Parsed CRR{crr_num}: info='{info}', score={score}")
+            else:
+                logging.warning(f"Could not parse CRR info: {crr_info}")
+
         return crr_data
 
     def extract_groups(self, crr_info: str) -> Tuple[str, str]:
@@ -79,104 +100,104 @@ class CRISPRCladeClassifier:
     def determine_clade(self, genotype_str: str, spacer_counts: Dict[str, int]) -> Tuple[
         str, float, float, float, str, str]:
         def parse_crr_info(crr_info: str) -> Tuple[str, str, str]:
-            group_match = re.search(r'Group:\s*([\w.-]+(?:\s+[\w.-]+)*(?:\s+\([^)]*\))*)', crr_info)
-            subgroup_match = re.search(r'Subgroup:\s*([^,>]+)', crr_info)
+            # Modified to better catch WP groups
+            group_match = re.search(r'Group:\s*([\w.-]+(?:\s+[\w.-]+)*(?:\s*\([^)]*\))*)', crr_info)
+            subgroup_match = re.search(r'Subgroup:\s*(?:Group\s+)?([^,>]+)', crr_info)  # Made 'Group' optional
             specific_match = re.search(r'>\s*([^,]+)', crr_info)
+
             group = group_match.group(1) if group_match else ""
             subgroup = subgroup_match.group(1) if subgroup_match else ""
             specific = specific_match.group(1) if specific_match else ""
             return group, subgroup, specific
 
         def extract_wp_subgroups(subgroup: str) -> List[str]:
-            return re.findall(r'(Ia|Ib|II)', subgroup)
+            # More flexible pattern to catch variations
+            return re.findall(r'(Ia|Ib|II)(?:\s*\+\s*)?', subgroup)
 
         def extract_subgroup(subgroup: str) -> str:
             subgroup_match = re.search(r'(Rubus\s+[IV]+|B-group\s+[IV]+|Group\s+[IV]+|[IV]+)', subgroup)
             return subgroup_match.group(1) if subgroup_match else ""
 
-        crr_data = self.parse_crispr_genotype(genotype_str) if genotype_str and genotype_str.lower() != 'none' else {}
+        logging.info(f"Determining clade for genotype: {genotype_str}")
+        logging.info(f"With spacer counts: {spacer_counts}")
+
+        if not genotype_str or genotype_str.lower() == 'none':
+            return "Unknown", 0.0, 0.0, 0.0, "Very Low", ""
+
+        # Remove "CRR: " prefix if present
+        genotype_str = re.sub(r'^CRR:\s*', '', genotype_str)
+        crr_data = self.parse_crispr_genotype(genotype_str)
+        logging.info(f"Parsed CRR data: {crr_data}")
 
         crr1_info = crr_data.get('CRR1', {}).get('info', '')
         crr2_info = crr_data.get('CRR2', {}).get('info', '')
         crr1_score = crr_data.get('CRR1', {}).get('score', 0)
         crr2_score = crr_data.get('CRR2', {}).get('score', 0)
 
+        logging.info(f"CRR1 info: {crr1_info}, score: {crr1_score}")
+        logging.info(f"CRR2 info: {crr2_info}, score: {crr2_score}")
+
         crr1_group, crr1_subgroup, crr1_specific = parse_crr_info(crr1_info)
         crr2_group, crr2_subgroup, crr2_specific = parse_crr_info(crr2_info)
 
-        # Determine clade based on CRR1 and CRR2 information
-        clade = "Unknown"
-        subgroup = ""
-
-        # WP cases
-        if "WP" in crr1_group + crr2_group:
+        # WP cases first
+        if "WP" in crr1_group and "WP" in crr2_group:
             clade = "Widely Prevalent (WP)"
             crr1_subgroups = extract_wp_subgroups(crr1_subgroup)
             crr2_subgroups = extract_wp_subgroups(crr2_subgroup)
+
             common_subgroups = set(crr1_subgroups) & set(crr2_subgroups)
-
             if common_subgroups:
-                if len(common_subgroups) > 1:
-                    subgroup = "+".join(sorted(common_subgroups))
-                else:
-                    subgroup = list(common_subgroups)[0]
-            elif crr1_subgroups and crr2_subgroups:
-                subgroup = f"{'+'.join(sorted(crr1_subgroups))}/{'+'.join(sorted(crr2_subgroups))}"
+                subgroup = "+".join(sorted(common_subgroups))
             else:
-                subgroup = "Unknown"
+                subgroup = f"{'+'.join(sorted(crr1_subgroups))}/{'+'.join(sorted(crr2_subgroups))}"
 
-        # ENA, WNA, E.pyrifoliae DSM 12163, and IH 3-1 cases
-        elif any(group in crr1_group + crr2_group for group in ["ENA", "Group IV"]):
+        # ENA and WNA cases
+        elif all(("ENA" in g or "Group IV" in g) for g in [crr1_group, crr2_group]):
             clade = "Eastern North American (ENA)"
             subgroup = "IV"
-        elif any(group in crr1_group + crr2_group for group in ["WNA", "Group III"]):
+        elif all(("WNA" in g or "Group III" in g) for g in [crr1_group, crr2_group]):
             clade = "Western North American (WNA)"
             subgroup = "III"
-        elif "E.pyrifoliae DSM 12163" in crr1_group + crr2_group:
-            clade = "E.pyrifoliae DSM 12163"
-            subgroup = ""
-        elif "IH 3-1" in crr1_group + crr2_group:
-            clade = "IH 3-1"
-            subgroup = ""
 
         # Rubus cases
-        elif "Rubus" in crr1_group + crr2_group:
+        elif all("Rubus" in g for g in [crr1_group, crr2_group]):
             clade = "Rubus"
             rubus_subgroup = extract_subgroup(crr1_subgroup) or extract_subgroup(crr2_subgroup)
-            if rubus_subgroup:
-                subgroup = rubus_subgroup.replace("Rubus ", "")
-            else:
-                subgroup = "Unknown"
+            subgroup = rubus_subgroup.replace("Rubus ", "") if rubus_subgroup else "I"
 
         # B-group cases
-        elif "B-group" in crr1_group + crr2_group:
+        elif all("B-group" in g for g in [crr1_group, crr2_group]):
             clade = "B-Group"
             b_group_subgroup = extract_subgroup(crr1_subgroup) or extract_subgroup(crr2_subgroup)
-            if b_group_subgroup:
-                subgroup = b_group_subgroup.replace("B-group ", "")
-            else:
-                subgroup = "Unknown"
+            subgroup = b_group_subgroup.replace("B-group ", "") if b_group_subgroup else "II"
+
+        # Special cases
+        elif all("E.pyrifoliae DSM 12163" in g for g in [crr1_group, crr2_group]):
+            clade = "E.pyrifoliae DSM 12163"
+            subgroup = ""
+        elif all("IH 3-1" in g for g in [crr1_group, crr2_group]):
+            clade = "IH 3-1"
+            subgroup = ""
+        else:
+            return "Unknown", 0.0, 0.0, 0.0, "Very Low", ""
 
         # Calculate scores
-        crr1_spacers = spacer_counts.get('CRR1', 0)
-        crr2_spacers = spacer_counts.get('CRR2', 0)
-        crr4_spacers = spacer_counts.get('CRR4', 0)
+        genotype_score = (crr1_score + crr2_score) / 2
 
+        # Calculate spacer score if we have matching clade data
         if clade in self.clade_data and subgroup in self.clade_data[clade]:
             crr1_range, crr2_range, crr4_range = self.clade_data[clade][subgroup]
-            spacer_score = self.calculate_spacer_score(crr1_spacers, crr2_spacers, crr4_spacers,
-                                                       crr1_range, crr2_range, crr4_range)
+            spacer_score = self.calculate_spacer_score(
+                spacer_counts.get('CRR1', 0),
+                spacer_counts.get('CRR2', 0),
+                spacer_counts.get('CRR4', 0),
+                crr1_range, crr2_range, crr4_range
+            )
         else:
             spacer_score = 0
 
-        genotype_score = (crr1_score + crr2_score) / 2 if crr1_score or crr2_score else 0
-
-        # Calculate final confidence score
-        if genotype_score > 0:
-            final_confidence_score = 0.7 * genotype_score + 0.3 * spacer_score
-        else:
-            final_confidence_score = 0.3 * spacer_score  # Reduce confidence when no genotype information is available
-
+        final_confidence_score = 0.7 * genotype_score + 0.3 * spacer_score
         confidence_level = self.determine_confidence_level(final_confidence_score)
 
         return clade, final_confidence_score, spacer_score, genotype_score, confidence_level, subgroup
@@ -199,20 +220,34 @@ class CRISPRCladeClassifier:
                                crr1_range: Tuple[int, int], crr2_range: Tuple[int, int],
                                crr4_range: Union[int, Tuple[int, int]]) -> float:
         if crr1_spacers == 0 and crr2_spacers == 0 and crr4_spacers == 0:
-            return 0  # No spacer information available
+            return 0
 
         scores = []
-        for spacer, range_val in [(crr1_spacers, crr1_range), (crr2_spacers, crr2_range),
-                                  (crr4_spacers, crr4_range)]:
-            if isinstance(range_val, tuple):
-                if range_val[0] <= spacer <= range_val[1]:
-                    scores.append(100)
-                else:
-                    scores.append(max(0, 100 - min(abs(spacer - range_val[0]), abs(spacer - range_val[1])) * 10))
-            else:
-                scores.append(100 if spacer == range_val else max(0, 100 - abs(spacer - range_val) * 10))
+        # Score CRR1
+        if crr1_range[0] <= crr1_spacers <= crr1_range[1]:
+            scores.append(100)
+        else:
+            diff = min(abs(crr1_spacers - crr1_range[0]), abs(crr1_spacers - crr1_range[1]))
+            scores.append(max(0, 100 - (diff * 5)))
 
-        return sum(scores) / 3  # Average of all three scores
+        # Score CRR2
+        if crr2_range[0] <= crr2_spacers <= crr2_range[1]:
+            scores.append(100)
+        else:
+            diff = min(abs(crr2_spacers - crr2_range[0]), abs(crr2_spacers - crr2_range[1]))
+            scores.append(max(0, 100 - (diff * 5)))
+
+        # Score CRR4
+        if isinstance(crr4_range, tuple):
+            if crr4_range[0] <= crr4_spacers <= crr4_range[1]:
+                scores.append(100)
+            else:
+                diff = min(abs(crr4_spacers - crr4_range[0]), abs(crr4_spacers - crr4_range[1]))
+                scores.append(max(0, 100 - (diff * 5)))
+        else:
+            scores.append(100 if crr4_spacers == crr4_range else max(0, 100 - abs(crr4_spacers - crr4_range) * 5))
+
+        return sum(scores) / len(scores)
 
     @staticmethod
     def calculate_combined_score(spacer_score: float, genotype_score: float) -> float:
@@ -298,11 +333,37 @@ class CRISPRCladeClassifier:
 
 
 def parse_spacer_counts(spacer_str: str) -> Dict[str, int]:
+    """Parse CRISPR spacer counts from log output."""
+    logging.info(f"Parsing spacer counts from: {spacer_str}")
+
+    if not spacer_str or spacer_str == "No results":
+        logging.warning("No spacer string provided or 'No results' found")
+        return {}
+
     counts = {}
-    if spacer_str:
-        for item in spacer_str.split(', '):
-            crr, count = item.split(': ')
-            counts[crr] = int(count)
+
+    # First try to find CRRFinder's detailed counts
+    if isinstance(spacer_str, str):  # Add type check
+        lines = spacer_str.split('\n')
+        for line in lines:
+            match = re.search(r'Found (\d+) (CRR[124])', line)
+            if match:
+                count, crr_type = match.groups()
+                counts[crr_type] = int(count)
+
+        # If no matches found, try CRISPRAnalyzer format
+        if not counts and ': ' in spacer_str:
+            parts = [p.strip() for p in spacer_str.split(',')]
+            for part in parts:
+                if ': ' in part and 'Total:' not in part:
+                    crr, count = part.split(': ')
+                    try:
+                        counts[crr] = int(count)
+                    except ValueError:
+                        logging.error(f"Could not convert count to integer in part: {part}")
+                        continue
+
+    logging.info(f"Parsed spacer counts: {counts}")
     return counts
 
 def process_test_case(classifier: CRISPRCladeClassifier, case: Union[Tuple[str, str], str]) -> Dict[str, Union[str, float]]:
@@ -341,8 +402,8 @@ def process_csv(input_file: str, output_file: str, classifier: CRISPRCladeClassi
         writer.writeheader()
 
         for row in reader:
-            genotype = row['crispr_genotype']
-            spacers = row['crispr_spacers']
+            genotype = row['crispr_genotype_extra_info']
+            spacers = row['crispr_spacers_count']
 
             spacer_counts = parse_spacer_counts(spacers)
             clade, score, spacer_score, genotype_score, confidence_level, subgroup = classifier.determine_clade(

@@ -1,4 +1,4 @@
-import fcntl
+# import fcntl
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -17,10 +17,20 @@ from resistance.virulence_genes import VirulenceGenes
 from plasmids.plasmid_finder import PlasmidFinder
 from crr_genotypes.crr_genotype_finder import CRRFinder
 from assigning_types.assembly_statistics import FastaStatistics
+from mlst.mlst_typer import MLSTTyper
 
 from utils.clade_assigner import CRISPRCladeClassifier, parse_spacer_counts
-import os
 import contextlib
+import logging
+import os
+from pathlib import Path
+
+import portalocker
+import getpass
+import subprocess
+import sys
+
+
 
 # Assuming the matrix file is in the project root
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -36,6 +46,7 @@ class GenomeAnalysisResult:
     total_size_bp: int
     ambiguous_bases: int
     GC_content_percent: float
+    mlst: str
     present_plasmids: str
     streptomycin: str
     virulence_genes: str
@@ -52,6 +63,7 @@ def setup_logging():
 
 
 def process_genomes(genome_files: List[Path], clade_classifier: CRISPRCladeClassifier, max_workers: int = 4) -> List[Dict]:
+    ensure_sudo_session()
     processed_results = []
     futures = []
 
@@ -91,15 +103,30 @@ def process_genomes(genome_files: List[Path], clade_classifier: CRISPRCladeClass
 
 @contextlib.contextmanager
 def genome_lock(genome_file: Path):
+    """
+    Cross-platform file lock using portalocker. Creates a temporary .lock file,
+    locks it exclusively, and removes it at the end.
+    """
     lock_file = genome_file.with_suffix('.lock')
     try:
-        with open(lock_file, 'w') as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-            yield
-    finally:
-        if lock_file.exists():
-            lock_file.unlink()
+        # Open (or create) the lock file
+        with open(lock_file, 'w') as lock_handle:
+            # Request an exclusive lock (blocks if another process holds it)
+            portalocker.lock(lock_handle, portalocker.LOCK_EX)
+            yield  # Perform locked operations here
 
+    except Exception as e:
+        logging.error(f"Error locking file {lock_file}: {e}")
+        raise
+
+    finally:
+        # Unlock happens automatically when 'with' block ends
+        # (portalocker unlocks on file close). Then remove the .lock file.
+        if lock_file.exists():
+            try:
+                lock_file.unlink()
+            except Exception as e:
+                logging.warning(f"Could not remove lock file {lock_file}: {e}")
 
 def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassifier) -> Optional[Dict]:
     with genome_lock(genome_file):
@@ -110,6 +137,21 @@ def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassi
             fasta_stats = FastaStatistics(genome_file)
             stats = fasta_stats.generate_assembly_statistics()
             logging.info(f"Generated stats for {genome_file.name}")
+
+            # MLST typing
+            try:
+                mlst_typer = MLSTTyper()
+                mlst_result = mlst_typer.type_genome(str(genome_file))
+                if mlst_result and 'st' in mlst_result:
+                    mlst_type = mlst_result['st']
+                    logging.info(f"MLST type determined: {mlst_type}")
+                else:
+                    mlst_type = 'Unknown'
+                    logging.warning(f"Could not determine MLST type for {genome_file.name}")
+                mlst_typer.cleanup()
+            except Exception as e:
+                logging.error(f"Error in MLST typing for {genome_file.name}: {str(e)}")
+                mlst_type = 'Error'
 
             # Find plasmids
             plasmid_finder = PlasmidFinder()
@@ -127,7 +169,7 @@ def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassi
             virulence_genes.run_blast_for_genome(genome_file)
             virulence_result = virulence_genes.get_results()
 
-            # CRISPR analysis
+            # CRISPR analysis with spacer ID tracking
             crispr_output_dir = genome_file.parent / "CRISPR_finder"
             crispr_analyzer = CRISPRAnalyzer(genome_file.parent.resolve(), crispr_output_dir)
 
@@ -135,24 +177,41 @@ def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassi
             genome_output_dir = crispr_output_dir / "Results" / genome_file.stem
             genome_output_dir.mkdir(parents=True, exist_ok=True)
 
-            crispr_analyzer.find_crispr_spacers(genome_file, genome_file.stem, genome_output_dir)
-
             crispr_summaries = crispr_analyzer.get_crispr_summary()
-            crispr_info = crispr_summaries.get(genome_file.stem, "CRISPR: No results")
-            logging.info(f"CRISPR analysis complete for {genome_file.name}")
-
-            # Process CRR
+            # Get CRR data
             crr_finder = CRRFinder(genome_file, genome_file.parent)
             crr_finder.analyze_genome()
             crr_finder.process_directory()
-            crr_info = crr_finder.get_crr_summary()
+            genotype_info = crr_finder.get_crr_summary()
 
-            # CRISPR clade classification
-            spacer_counts = parse_spacer_counts(crispr_info)
+            # Get spacer IDs and counts
+            cr1_spacers, cr2_spacers, cr4_spacers = crr_finder.get_crr_spacer_ids()
+
+            # Count total spacers
+            cr1_total = len(list(cr1_spacers))
+            cr2_total = len(list(cr2_spacers))
+            cr4_total = len(list(cr4_spacers))
+            total_spacers = cr1_total + cr2_total + cr4_total
+
+            # Format CRISPR spacer information
+            crispr_info = f"CRR1: {cr1_total}, CRR2: {cr2_total}, CRR4: {cr4_total}, Total: {total_spacers}"
+
+            # Create spacer counts dictionary for clade classification
+            spacer_counts = {
+                'CRR1': cr1_total,
+                'CRR2': cr2_total,
+                'CRR4': cr4_total
+            }
+
+            logging.info(f"Using spacer counts for classification: {spacer_counts}")
+            logging.info(f"Using genotype info for classification: {genotype_info}")
+
+            # Use the clade classifier
             clade, score, spacer_score, genotype_score, confidence_level, subgroup = clade_classifier.determine_clade(
-                crr_info, spacer_counts)
+                genotype_info, spacer_counts)
 
-            # Build result dictionary
+            logging.info(f"Classification results - Clade: {clade}, Score: {score}, Confidence: {confidence_level}")
+
             result = {
                 'name': stats['name'],
                 'contig_count': stats['contig_count'],
@@ -162,10 +221,14 @@ def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassi
                 'total_size_bp': stats['total_size_bp'],
                 'ambiguous_bases': stats['ambiguous_bases'],
                 'GC_content_percent': stats['GC_content_percent'],
+                'mlst': mlst_type,
                 'present_plasmids': plasmid_info,
                 'streptomycin': str(str_result),
-                'crispr_spacers': str(crispr_info),
-                'crispr_genotype': str(crr_info),
+                'crispr_spacers_count': crispr_info,
+                'cr1_spacers': ', '.join(list(cr1_spacers)) if cr1_spacers else 'None',
+                'cr2_spacers': ', '.join(list(cr2_spacers)) if cr2_spacers else 'None',
+                'cr4_spacers': ', '.join(list(cr4_spacers)) if cr4_spacers else 'None',
+                'crispr_genotype_extra_info': genotype_info,
                 'clade': f"{clade} {subgroup}".strip() if clade != "Unknown" else clade,
                 'clade_confidence_score': round(score, 2),
                 'clade_confidence_level': confidence_level,
@@ -217,46 +280,32 @@ def write_results_to_csv(results: List[Dict], output_path: Path) -> None:
 
         logging.info(f"Writing {len(results)} results to CSV")
 
-        # Define column order
         base_columns = [
             'name', 'species', 'ANI_species', 'contig_count', 'N50_value',
             'largest_contig', 'largest_contig_size_bp', 'total_size_bp',
-            'ambiguous_bases', 'GC_content_percent', 'present_plasmids',
-            'streptomycin', 'crispr_spacers', 'crispr_genotype',
-            'capsule_locus', 'cellulose_locus', 'lps_locus', 'sorbitol_locus',
-            'flag_i_locus', 'flag_ii_locus', 'flag_iii_locus', 'flag_iv_locus',
-            't3ss_i_locus', 't3ss_ii_locus', 't6ss_i_locus', 't6ss_ii_locus', 'flag3_locus',
+            'ambiguous_bases', 'GC_content_percent', 'mlst', 'present_plasmids',
+            'streptomycin', 'crispr_spacers_count', 'cr1_spacers', 'cr2_spacers',
+            'cr4_spacers', 'crispr_genotype_extra_info', 'capsule_locus',
+            'cellulose_locus', 'lps_locus', 'sorbitol_locus', 'flag_i_locus',
+            'flag_ii_locus', 'flag_iii_locus', 'flag_iv_locus', 't3ss_i_locus',
+            't3ss_ii_locus', 't6ss_i_locus', 't6ss_ii_locus', 'flag3_locus',
             'clade', 'clade_confidence_score', 'clade_confidence_level',
             'levan_synthesis'
         ]
         virulence_columns = ['other_genes']
         all_columns = base_columns + virulence_columns
 
-        # Create DataFrame and ensure all columns exist
         df = pd.DataFrame(results)
 
-        # Verify all required columns exist
         for column in all_columns:
             if column not in df.columns:
-                logging.warning(f"Column {column} not found in results, adding with default value 'None'")
                 df[column] = 'None'
 
-        # Reorder columns and fill missing values
         df = df.reindex(columns=all_columns, fill_value='None')
-
-        # Log dataframe info before writing
-        logging.info(f"DataFrame shape: {df.shape}")
-        logging.info(f"DataFrame columns: {df.columns.tolist()}")
-        logging.info(f"Number of rows: {len(df)}")
-
-        # Write to CSV
         df.to_csv(output_path, index=False)
 
-        # Verify the written file
         if output_path.exists():
-            written_df = pd.read_csv(output_path)
-            logging.info(f"Successfully wrote CSV with {len(written_df)} rows")
-            logging.info(f"Written CSV preview:\n{written_df['name'].tolist()}")
+            verify_csv(output_path)
         else:
             logging.error("Failed to create CSV file")
 
@@ -401,6 +450,49 @@ def remove_unnecessary_folders(output_dir: Path) -> None:
     for folder in folders_to_remove:
         folder_path = output_dir / folder
         remove_folder(folder_path)
+
+
+
+def ensure_sudo_session():
+    """
+    If the user already has a valid sudo session, do nothing.
+    Otherwise, prompt for the sudo password and validate it.
+    """
+
+    # 1) Check if sudo password is needed by running "sudo -n true"
+    #    If it returns 0, we already have a valid session. If not, we need to prompt.
+    need_password = subprocess.call(
+        ["sudo", "-n", "true"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
+    if need_password == 0:
+        # Sudo privileges are already active in this session; no password needed.
+        logging.info("Sudo password not required (already authenticated).")
+        return
+
+    # 2) Otherwise, prompt for password and validate with "sudo -S -v"
+    password = getpass.getpass("Please enter your sudo password: ")
+
+    # The -S flag tells sudo to read the password from stdin
+    # The -v flag just validates the password without running any command
+    cmd = ['sudo', '-S', '-v']
+    process = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    # Pass the password to sudo’s stdin
+    out, err = process.communicate((password + '\n').encode())
+
+    if process.returncode != 0:
+        logging.info("Error: Wrong sudo password or problem running sudo. Exiting.")
+        sys.exit(1)
+
+    logging.info("Sudo privileges acquired. Continuing...")
+
 
 # Setup logging when the module is imported
 setup_logging()

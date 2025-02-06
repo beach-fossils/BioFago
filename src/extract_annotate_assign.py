@@ -106,6 +106,13 @@ def process_genome_with_reference(
     logging.info(
         f"Final Assigned Type for {os.path.basename(genome_dir)} with {reference_file.stem}: {final_type_info}")
 
+    type_report, final_type_locus, final_type, flagged_genes, final_type_info = gene_presence.assign_type(df_analyzed)
+
+    logging.info(f"Type analysis results for {os.path.basename(genome_dir)}:")
+    logging.info(f"  Final type locus: {final_type_locus}")
+    logging.info(f"  Final type: {final_type}")
+    logging.info(f"  Flagged genes: {flagged_genes}")
+
     return os.path.basename(
         genome_dir), reference_file.stem, final_type_locus, final_type, flagged_genes, final_type_info
 
@@ -126,10 +133,15 @@ def process_genome(genome_dir: str, base_folder: str) -> List[tuple]:
     for gb_folder in REFERENCE_TYPES.iterdir():
         if gb_folder.is_dir():
             for gb_file in gb_folder.glob("*.gb"):
+                logging.info(f"Processing genome {genome_name} with reference {gb_file}")
                 result = process_genome_with_reference(genome_dir, input_genome, gb_file, genome_output_folder)
                 if result:
+                    logging.info(f"Got result for {genome_name}: {result}")
                     results.append(result)
+                else:
+                    logging.warning(f"No result for {genome_name} with reference {gb_file}")
 
+    logging.info(f"Total results for genome {genome_name}: {len(results)}")
     return results
 
 

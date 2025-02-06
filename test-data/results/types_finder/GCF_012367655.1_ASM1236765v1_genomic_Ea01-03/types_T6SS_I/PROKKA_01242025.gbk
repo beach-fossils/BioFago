@@ -1,0 +1,64 @@
+LOCUS       NZ_JAAEWH010000075.1    1566 bp    DNA     linear       24-JAN-2025
+DEFINITION  Erwinia amylovora strain strain.
+ACCESSION   
+VERSION
+KEYWORDS    .
+SOURCE      Erwinia amylovora
+  ORGANISM  Erwinia amylovora
+            Unclassified.
+COMMENT     Annotated using prokka 1.14.6 from
+            https://github.com/tseemann/prokka.
+FEATURES             Location/Qualifiers
+     source          1..1566
+                     /organism="Erwinia amylovora"
+                     /mol_type="genomic DNA"
+                     /strain="strain"
+     CDS             complement(352..615)
+                     /locus_tag="PREFIX_00001"
+                     /inference="ab initio prediction:Prodigal:002006"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /translation="MNLEEVSQKICSVLISSAYVDEAREIKELMIKVLTLDENDPVRM
+                     SAIESLISRCHPKWLGDYYINNISYKEWTDLITNFKKKLIKEK"
+     CDS             complement(612..1454)
+                     /locus_tag="PREFIX_00002"
+                     /inference="ab initio prediction:Prodigal:002006"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /translation="MVGERPQRRTRYIYGEGGWEPLARVDSVGEDDPGKVFWYHTELN
+                     GLPERMTDEYGERVWQGRFSAWGEAEHESSPRGLRQNLRFQGQYFDAETGLHYNLFRY
+                     YDPAGGRFTQTDPIGLAGGLNLYAYAPNPLSWVDPLGLSKCSLEKTPITRNSARNLLR
+                     SRGLNKQIQHDTINSFDGQIYASRGKSGDVFTITEHTPGSASQVYVTRGSAGATPAGR
+                     RANLALPPNNSATYEGKVALTRPQTLLEGKVAPQLQWGADKTGGGWQIVTAGGRYSGA
+                     TELL"
+ORIGIN      
+        1 agatatagcg cgtgcgccgc cgcggcgtgc ggctgctgcg ctcgcccacc atccgcagcc
+       61 cgctccagtc gaagtgaatg acctcggcgt tttcttccgc ctcgccgtgg cggtagagga
+      121 tcttctgcgt gagccgcccc ggctggtcat agcggttgta ctcgcggtgg taaccagcgt
+      181 taacctgacg gtgctggacg gctgtctgct gccgatcccc gacagccgcg aggaaaggcg
+      241 gctgcgcggg cgctggagca ggctgaacga cggatcaaga cggtgcaggc gtaacggact
+      301 gttcaatgta taaagccgga aggatcgtcg gggatctctt ccggctttaa tttatttttc
+      361 tttaatgagt ttctttttaa agttagtaat aagatcagtc cattctttat aactaatatt
+      421 attaatatag taatctccaa gccatttagg atgacagcgt gatattaaac tctctatcgc
+      481 tgacattctg acaggatcat tttcatctaa tgttaacact ttaatcatta actctttaat
+      541 ttctctagct tcatcaacgt aagcagacga aatcaataca ctacatattt tttggctaac
+      601 ttcttctaga ttcataacaa ctctgtcgct cctgaatatc taccgccagc agtaactatt
+      661 tgccacccgc caccagtttt atcagctccc cattgtagtt gaggggcaac tttaccttcg
+      721 agaagcgttt gaggccgggt taaagcaact ttcccttcat aagttgctga attattgggt
+      781 ggcaaagcaa ggtttgcacg tcttcccgct ggcgtggcac ctgcacttcc tcttgtaaca
+      841 tatacttgag aggcgctacc cggcgtatgt tcagtaatag tgaacacatc tccagacttt
+      901 cctctagatg catatatttg gccatcgaaa ctattaatag tgtcatgctg aatttgcttg
+      961 tttaaaccac gacttctcag caaatttctg gctgaatttc gtgtaatagg tgttttttcg
+     1021 agtgaacact tactcaaccc cagcggatca acccaactta acggattcgg cgcataagca
+     1081 taaaggttca gtccccccgc caacccgatc ggatctgtct gagtaaacct tccacctgcc
+     1141 ggatcataat agcggaataa attatagtga agcccggttt cggcgtcaaa atactgcccc
+     1201 tggaagcgca gattctgccg cagcccgcgc gggctgcttt cgtgctccgc ttcaccccac
+     1261 gccgagaaac gcccctgcca tacccgttcg ccgtattcat ccgtcatccg ctccggcagg
+     1321 ccgttcagct ccgtgtgata ccagaacacc ttgccggggt cgtcctcgcc cacgctgtcc
+     1381 acccgcgcca gcggctccca gccgccctcg ccgtagatat agcgcgtgcg ccgctgcggc
+     1441 cgctcgccca ccatccgcag cccgctccag tcgaagtgaa tgacctcggc gttttcttcc
+     1501 gcctcgccgt ggcggtacag gatcttctgc gtgcgccgcc ccagcaggtc atagcggtgt
+     1561 actcgc
+//

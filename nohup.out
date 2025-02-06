@@ -1,0 +1,24 @@
+2024-11-17 14:07:03,753 - INFO - Input path: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4
+2024-11-17 14:07:03,753 - INFO - Input path exists: True
+2024-11-17 14:07:03,753 - INFO - Input path is file: False
+2024-11-17 14:07:03,753 - INFO - Input path is dir: True
+2024-11-17 14:07:05,110 - INFO - BLAST version: blastn: 2.16.0+
+ Package: blast 2.16.0, build Jun 25 2024 12:36:54
+2024-11-17 14:07:05,112 - INFO - Attempting to copy FASTA files from /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4 to /var/folders/71/63pxzqvs6xs7s4r3rgx_50s40000gn/T/tmp5aofwena/genomes
+2024-11-17 14:07:05,113 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/tool_test_output.json
+2024-11-17 14:07:05,113 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/biofago_runner.py
+2024-11-17 14:07:05,113 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/create_zip.py
+2024-11-17 14:07:05,114 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/logs20241115_161141.log
+2024-11-17 14:07:05,114 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/LICENSE
+2024-11-17 14:07:05,114 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/requirements.txt
+2024-11-17 14:07:05,114 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/environment.yml
+2024-11-17 14:07:05,114 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/Dockerfile
+2024-11-17 14:07:05,115 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/.shed.yml
+2024-11-17 14:07:05,115 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/README.md
+2024-11-17 14:07:05,115 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/biofago_runner.sh
+2024-11-17 14:07:05,115 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/.gitignore
+2024-11-17 14:07:05,116 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/logs20241115_161038.log
+2024-11-17 14:07:05,116 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/biofago_erwinia.xml
+2024-11-17 14:07:05,116 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/nohup.out
+2024-11-17 14:07:05,116 - WARNING - Skipping non-FASTA file: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4/tool_test_output.html
+2024-11-17 14:07:05,116 - ERROR - No FASTA files found in the input directory: /Users/josediogomoura/Documents/BioFago/BioFago_to_Server/BioFagov4

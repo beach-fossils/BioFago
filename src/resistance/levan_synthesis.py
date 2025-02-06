@@ -227,7 +227,7 @@ class LevanGenesClassifier:
             if all([lsc_id >= self.identity_threshold,
                    rlsA_id >= self.identity_threshold,
                    rlsB_id >= self.identity_threshold]):
-                return "Similar to Widely-prevalent E. amylovora (Spiraeoideae-infecting)"
+                return "Similar to Widely-prevalent E. amylovora (Amygdaloideae-infecting)"
 
         if not lsc_present:
             return "Similar to E. pyrifoliae (limited host range)"
@@ -353,8 +353,8 @@ def format_levan_result(levan_result: dict) -> str:
     """Format levan synthesis results into a single string."""
     try:
         strain_type = levan_result.get('strain_type', 'Unknown')
-        if strain_type == "Similar to Widely-prevalent E. amylovora (Spiraeoideae-infecting)":
-            type_text = "Similar to Widely-prevalent E. amylovora (Spiraeoideae-infecting)"
+        if strain_type == "Similar to Widely-prevalent E. amylovora (Amygdaloideae-infecting)":
+            type_text = "Similar to Widely-prevalent E. amylovora (Amygdaloideae-infecting)"
         else:
             type_text = strain_type
 

@@ -1,4 +1,4 @@
-import fcntl
+# import fcntl
 import shutil
 import subprocess
 import threading
@@ -47,6 +47,8 @@ class CRRFinder:
         self.total_spacers_found = 0
         self._setup_logging()
         self._lock = threading.Lock()
+        self.current_spacer_ids = {'CRR1': [], 'CRR2': [], 'CRR4': []}
+
 
     def _setup_logging(self) -> None:
         self.logger = logging.getLogger(f'CRRFinder_{self.genome_fasta.stem}')
@@ -108,9 +110,11 @@ class CRRFinder:
             raise
 
     def analyze_genome(self) -> None:
-        """Perform the full analysis workflow with proper file handling"""
         try:
+            self.current_spacer_ids = {'CRR1': [], 'CRR2': [], 'CRR4': []}
             spacer_files = list(SPACERS_FOLDER.glob('*.csv'))
+            self.logger.info(f"Found {len(spacer_files)} spacer files to process")
+
             for spacer_file in tqdm(spacer_files, desc="Processing spacer files"):
                 try:
                     crr_type = spacer_file.stem.split('_')[-1]
@@ -118,44 +122,58 @@ class CRRFinder:
 
                     with self._lock:
                         self.spacers = self._load_spacers(spacer_file)
+                        self.logger.info(f"Loaded {len(self.spacers)} spacers from {spacer_file}")
                         if not self.spacers:
-                            self.logger.warning(f"No spacers loaded from {spacer_file}")
                             continue
-
-                    # Create output paths
-                    output_csv = self.output_folder / f"{crr_type}_incidence_matrix.csv"
-                    blast_output_csv = self.output_folder / f"{crr_type}_incidence_matrix_blast_results.csv"
-                    output_json = self.output_folder / f"{crr_type}_groups.json"
-
-                    # Ensure output directory exists
-                    output_csv.parent.mkdir(parents=True, exist_ok=True)
 
                     self._create_spacer_fasta()
                     self._run_blast()
 
-                    presence_matrix, blast_results = self._parse_blast_results()
+                    presence_matrix, blast_results, crr_spacers = self._parse_blast_results()
 
-                    if presence_matrix and blast_results:
-                        self._save_presence_matrix(presence_matrix, output_csv)
-                        self._save_blast_results(blast_results, blast_output_csv)
+                    output_csv = self.output_folder / f"{crr_type}_incidence_matrix.csv"
+                    blast_output_csv = self.output_folder / f"{crr_type}_incidence_matrix_blast_results.csv"
+                    output_json = self.output_folder / f"{crr_type}_groups.json"
 
-                        identified_groups = self._identify_groups(presence_matrix, crr_type)
-                        self._save_identified_groups(identified_groups, output_json)
+                    self._save_presence_matrix(presence_matrix, output_csv)
+                    self._save_blast_results(blast_results, blast_output_csv)
 
-                    self.logger.info(f"Analysis complete for {crr_type}")
+                    identified_groups = self._identify_groups(presence_matrix, crr_type)
+                    self._save_identified_groups(identified_groups, output_json)
+
+                    # Update global tracking of spacer IDs
+                    for spacer_id, present in presence_matrix.items():
+                        if present:
+                            if spacer_id.startswith('1'):
+                                if spacer_id not in self.current_spacer_ids['CRR1']:
+                                    self.current_spacer_ids['CRR1'].append(spacer_id)
+                            elif spacer_id.startswith('2'):
+                                if spacer_id not in self.current_spacer_ids['CRR2']:
+                                    self.current_spacer_ids['CRR2'].append(spacer_id)
+                            elif spacer_id.startswith('4'):
+                                if spacer_id not in self.current_spacer_ids['CRR4']:
+                                    self.current_spacer_ids['CRR4'].append(spacer_id)
+
+                    self.logger.info(
+                        f"Completed analysis for {crr_type} with {len(identified_groups)} identified groups")
 
                 except Exception as e:
-                    self.logger.error(f"Error processing {crr_type}: {str(e)}")
+                    self.logger.error(f"Error processing {crr_type}: {str(e)}", exc_info=True)
                     continue
 
                 finally:
+                    # Reset spacer count but keep IDs
                     self.total_spacers_found = 0
+                    self.spacers = {}
 
         except Exception as e:
-            self.logger.error(f"Error in analyze_genome: {str(e)}")
+            self.logger.error(f"Error in analyze_genome: {str(e)}", exc_info=True)
             raise
         finally:
-            self._cleanup_temp_files()
+            if hasattr(self, 'temp_dir') and self.temp_dir.exists():
+                self._cleanup_temp_files()
+            self.logger.info("Completed genome analysis")
+
 
     def _cleanup_temp_files(self) -> None:
         """Clean up temporary files and directories"""
@@ -214,40 +232,58 @@ class CRRFinder:
             logging.error(f"Error parsing JSON from {MAP_JSON}: {e}")
         return {}
 
-    def _parse_blast_results(self) -> Tuple[Dict[str, int], List[List[str]]]:
+    def _parse_blast_results(self) -> Tuple[Dict[str, int], List[List[str]], Dict[str, List[str]]]:
         presence_matrix = {spacer_id: 0 for spacer_id in self.spacers.keys()}
         blast_results = []
-        spacer_counter = Counter()
 
         try:
+            if not self.blast_output.exists():
+                self.logger.error(f"BLAST output file not found: {self.blast_output}")
+                return presence_matrix, blast_results, {k: self.current_spacer_ids[k] for k in self.current_spacer_ids}
+
             with open(self.blast_output, 'r') as infile:
                 reader = csv.reader(infile, delimiter='\t')
                 for row in reader:
                     blast_results.append(row)
+                    if len(row) < 4:
+                        continue
+
                     spacer_id = row[1]
                     pident = float(row[2])
                     length = int(row[3])
-                    if spacer_id in self.spacers:
-                        spacer_length = len(self.spacers[spacer_id])
-                        coverage = (length / spacer_length) * 100
-                        logging.info(
-                            f"Spacer {spacer_id}: pident={pident}, length={length}, spacer_length={spacer_length}, coverage={coverage}")
-                        if pident >= self.IDENTITY_THRESHOLD and coverage >= self.COVERAGE_THRESHOLD:
-                            spacer_counter[spacer_id] += 1
-                        else:
-                            logging.info(
-                                f"Spacer {spacer_id} did not meet thresholds: pident={pident}, coverage={coverage}")
-        except FileNotFoundError:
-            logging.error(f"BLAST output file not found: {self.blast_output}")
-        except csv.Error as e:
-            logging.error(f"Error parsing BLAST results: {e}")
 
-        # Update presence_matrix based on spacer_counter
-        for spacer_id, count in spacer_counter.items():
-            presence_matrix[spacer_id] = count
+                    if spacer_id not in self.spacers:
+                        continue
 
-        self.total_spacers_found = sum(spacer_counter.values())
-        return presence_matrix, blast_results
+                    spacer_length = len(self.spacers[spacer_id])
+                    coverage = (length / spacer_length) * 100
+
+                    if pident >= self.IDENTITY_THRESHOLD and coverage >= self.COVERAGE_THRESHOLD:
+                        presence_matrix[spacer_id] = 1
+                        self.logger.info(
+                            f"Found matching spacer {spacer_id} (identity={pident}%, coverage={coverage}%)")
+
+                        if spacer_id.startswith('1'):
+                            if spacer_id not in self.current_spacer_ids['CRR1']:
+                                self.current_spacer_ids['CRR1'].append(spacer_id)
+                        elif spacer_id.startswith('2'):
+                            if spacer_id not in self.current_spacer_ids['CRR2']:
+                                self.current_spacer_ids['CRR2'].append(spacer_id)
+                        elif spacer_id.startswith('4'):
+                            if spacer_id not in self.current_spacer_ids['CRR4']:
+                                self.current_spacer_ids['CRR4'].append(spacer_id)
+
+            crr_type_spacers = {k: sorted(v) for k, v in self.current_spacer_ids.items()}
+
+            for crr_type, spacers in crr_type_spacers.items():
+                self.logger.info(f"Found {len(spacers)} spacers for {crr_type}: {spacers}")
+
+            return presence_matrix, blast_results, crr_type_spacers
+
+        except Exception as e:
+            self.logger.error(f"Error parsing BLAST results: {e}", exc_info=True)
+            return presence_matrix, blast_results, {k: [] for k in self.current_spacer_ids}
+
 
     def _save_blast_results(self, blast_results: List[List[str]], output_csv: Path) -> None:
         """Save the raw BLAST results to a CSV file."""
@@ -435,6 +471,18 @@ class CRRFinder:
                 logging.error(f"Error reading CRR results from {best_results_file}: {e}")
                 return "CRR: Error in processing results"
         return "CRR: No results"
+
+    def get_crr_spacer_ids(self) -> Tuple[List[str], List[str], List[str]]:
+        if not any(self.current_spacer_ids.values()):
+            self.logger.info("Running new analysis to find spacers")
+            self.analyze_genome()
+
+        return (
+            sorted(self.current_spacer_ids['CRR1']),
+            sorted(self.current_spacer_ids['CRR2']),
+            sorted(self.current_spacer_ids['CRR4'])
+
+        )
 
 
 def traverse_genomes(root_dir: Path) -> List[Tuple[Path, str, str, str]]:

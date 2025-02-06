@@ -3,7 +3,6 @@ import subprocess
 from pathlib import Path
 import shutil
 
-
 def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_prefix):
     # Additional Prokka options
     prokka_options = {
@@ -15,9 +14,10 @@ def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_
 
     # Check if Docker is running
     try:
-        subprocess.run(['docker', 'ps'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Use 'sudo docker ps' if you truly need sudo for Docker listing.
+        subprocess.run(['docker', 'ps'], shell=False, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError:
-        print("Error: Docker is not running. Please start Docker and try again.")
+        print("Error: Docker is not running, or 'sudo' permission is required. Please start Docker and try again.")
         return
     except FileNotFoundError:
         print("Error: Docker is not installed or not found in the system PATH.")
@@ -29,8 +29,9 @@ def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_
     Path(output_path).mkdir(parents=True, exist_ok=True)  # Create the output folder
 
     # Configure the Prokka command for the specific fasta file
+    # IMPORTANT: Prepend 'sudo' to the Docker command if your environment requires it.
     prokka_command = [
-        'docker', 'run', '--rm',
+        'sudo', 'docker', 'run', '--rm',
         '--platform', 'linux/amd64',
         '-v', f'{Path(fasta_file).parent}:/reference_crispr',
         '-v', f'{output_path}:/output',
@@ -53,8 +54,6 @@ def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_
         print(f"Prokka annotation for {fasta_file} completed successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Error: Prokka annotation for {fasta_file} failed with exit code {e.returncode}.")
-        print(e.stderr)
-
 
 def rename_gbk_files(base_folder):
     renamed_count = 0
@@ -107,7 +106,6 @@ def copy_gbk_files(base_folder, destination_folder):
         for error in errors:
             print(error)
 
-
 def main():
     # Define the genomes and output directories
     folder_with_fastas = '/Users/josediogomoura/Documents/BioFago/BioFago/test-data/flag3/extracted'
@@ -128,7 +126,6 @@ def main():
             locus_tag_prefix=locus_tag_prefix,
             custom_db_path=custom_db_path
         )
-
 
 if __name__ == "__main__":
     # main()

@@ -7,42 +7,61 @@ from pathlib import Path
 from typing import List, Dict, Optional
 import multiprocessing
 from functools import partial
-
 import argparse
 import logging
 import pandas as pd
 
-# Add project root and src to sys.path
+# Add project root and src to sys.path FIRST
 project_root = Path(__file__).resolve().parent
 src_path = project_root / 'src'
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(src_path))
 
-matrix_path = os.path.join(project_root, 'reference_crispr', 'clades_groups_correlation.csv')
 
-from extract_annotate_assign import extract_annotate_assign
-from utils.folder_csv_manager import (
+from src.assigning_types.assembly_statistics import FastaStatistics
+from src.metrics_species_caller import new_run_species_metrics_finder, REFERENCE_GENOMES
+from src.extract_annotate_assign import extract_annotate_assign
+from src.utils.folder_csv_manager import (
     create_individual_folders,
     run_species_metrics_for_all,
     create_species_finder_folder,
-    cleanup_unwanted_species_folders
+    cleanup_unwanted_species_folders,
+    final_enhance_csv
 )
-from utils.genome_processing import process_single_genome, write_results_to_csv, keep_loci_files, process_genomes
-from utils.clade_assigner import CRISPRCladeClassifier, parse_spacer_counts
-from resistance.levan_synthesis import (
+from src.utils.genome_processing import process_single_genome, write_results_to_csv, keep_loci_files, process_genomes
+from src.utils.clade_assigner import CRISPRCladeClassifier, parse_spacer_counts
+from src.resistance.levan_synthesis import (
     run_levan_analysis,
     REFERENCE_LEVAN,
     format_levan_result
 )
 
+matrix_path = os.path.join(project_root, 'reference_crispr', 'clades_groups_correlation.csv')
+
+
 def setup_logging(log_file: Path, log_level: str) -> None:
     """Set up logging configuration."""
+    # Remove any existing handlers
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    # Set up basic configuration
     logging.basicConfig(
         filename=log_file,
         level=log_level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-
     )
+
+    # Add console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+
+    # Log startup info
+    logging.info("Logging initialized")
 
 
 def create_temp_dir():
@@ -199,21 +218,26 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
     processed_genomes = set()
 
     logging.info(f"Starting process_results with {len(results)} results")
+    logging.info(f"Number of extract_annotate_results: {len(extract_annotate_results)}")
 
-    # Create a mapping between short and full genome names
+    # Enhanced genome name mapping
     genome_name_mapping = {}
-    for annotation_result in extract_annotate_results:
-        if len(annotation_result) >= 6:
-            full_genome_name = annotation_result[0]
-            short_name = full_genome_name.split('.')[0]  # Get the part before the first dot
-            genome_name_mapping[short_name] = full_genome_name
-            genome_name_mapping[full_genome_name] = full_genome_name  # Also map full name to itself
+    for result in results:
+        if result and 'name' in result:
+            full_name = result['name']
+            short_name = full_name.split('.')[0]
+            genome_name_mapping[short_name] = full_name
+            genome_name_mapping[full_name] = full_name
+            logging.debug(f"Added genome name mapping: {short_name} -> {full_name}")
 
     for result in results:
         if not result:
             continue
 
-        genome_name = result.get('name')
+        # Create a copy of the result to avoid modifying the original
+        processed_result = result.copy()
+        genome_name = processed_result.get('name')
+
         if not genome_name or genome_name in processed_genomes:
             continue
 
@@ -226,17 +250,17 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
             if species_csv.exists():
                 try:
                     df = pd.read_csv(species_csv)
-                    result.update({
+                    processed_result.update({
                         'species': df['Species'].iloc[0] if 'Species' in df.columns else 'Unknown',
                         'ANI_species': round(float(df['ANI'].iloc[0]), 2) if 'ANI' in df.columns else 0.0,
                     })
                 except Exception as e:
                     logging.error(f"Error reading species CSV for {genome_name}: {str(e)}")
-                    result.update({'species': 'Unknown', 'ANI_species': 0.0})
+                    processed_result.update({'species': 'Unknown', 'ANI_species': 0.0})
             else:
-                result.update({'species': 'Unknown', 'ANI_species': 0.0})
+                processed_result.update({'species': 'Unknown', 'ANI_species': 0.0})
 
-            # Initialize locus fields with Unknown status
+            # Initialize locus fields
             locus_types = {
                 'types_capsule': 'capsule_locus',
                 'types_cellulose': 'cellulose_locus',
@@ -253,50 +277,61 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
                 'types_flag3': 'flag3_locus'
             }
 
-            # Initialize all locus fields as Unknown
+            # Initialize all locus fields with default value
             for locus_key in locus_types.values():
-                result[locus_key] = '(Unknown)'
+                if locus_key not in processed_result:
+                    processed_result[locus_key] = '(Unknown)'
 
-            # Get the full genome name from mapping
-            full_genome_name = genome_name_mapping.get(genome_name, genome_name)
+            # Get both full and short names for matching
+            full_genome_name = genome_name
+            short_genome_name = genome_name.split('.')[0]
 
             # Process annotation results
             for annotation_result in extract_annotate_results:
                 if len(annotation_result) >= 6:
-                    ann_genome, ref_type, type_locus, final_type, flagged_genes, _ = annotation_result
-                    # Check both the full name and short name
-                    if (ann_genome == full_genome_name or ann_genome.split('.')[
-                        0] == genome_name) and ref_type in locus_types:
+                    ann_genome, ref_type, type_locus, final_type, flagged_genes, final_type_info = annotation_result
+                    ann_genome_base = ann_genome.split('.')[0]
+
+                    logging.debug(f"Comparing names - Ann: {ann_genome}, Full: {full_genome_name}, "
+                                  f"Short: {short_genome_name}, Ann Base: {ann_genome_base}")
+
+                    if ((ann_genome == full_genome_name or
+                         ann_genome == short_genome_name or
+                         ann_genome_base == short_genome_name) and
+                            ref_type in locus_types):
+
                         locus_key = locus_types[ref_type]
                         formatted_type = f"({final_type})"
-                        if type_locus:
+                        if type_locus and type_locus.strip():
                             formatted_type = f"{type_locus} {formatted_type}"
+
                         if flagged_genes:
                             if isinstance(flagged_genes, list):
                                 flagged_genes = ', '.join(flagged_genes)
                             formatted_type += f" - Flagged genes: {flagged_genes}"
-                        result[locus_key] = formatted_type.strip()
+
+                        processed_result[locus_key] = formatted_type.strip()
                         logging.info(f"Added {ref_type} information for {genome_name}: {formatted_type}")
 
-            # Process CRISPR clade classification
-            genotype = result.get('crispr_genotype', '')
-            spacers = result.get('crispr_spacers', '')
-            spacer_counts = parse_spacer_counts(spacers)
-            clade, score, spacer_score, genotype_score, confidence_level, subgroup = clade_classifier.determine_clade(
-                genotype, spacer_counts)
-            result.update({
-                'clade': f"{clade} {subgroup}".strip() if clade != "Unknown" else clade,
-                'clade_confidence_score': round(score, 2),
-                'clade_confidence_level': confidence_level
-            })
-
-            final_results.append(result)
-            logging.info(f"Successfully processed genome {genome_name} with clade {clade}")
+            final_results.append(processed_result)
+            logging.info(f"Successfully processed genome {genome_name} with {len(locus_types)} locus types")
+            logging.debug(f"Final result for {genome_name}: {processed_result}")
 
         except Exception as e:
             logging.error(f"Error processing genome {genome_name}: {str(e)}")
+            logging.exception("Exception details:")
 
-    return final_results
+    # Write and enhance CSV after all genomes are processed
+    if final_results:
+        output_csv = species_finder_path / "all_results.csv"
+        write_results_to_csv(final_results, output_csv)
+        # Move the enhance call to after the write is confirmed
+        try:
+            final_enhance_csv(str(output_csv))
+            logging.info(f"Successfully enhanced CSV at {output_csv}")
+        except Exception as e:
+            logging.error(f"Error enhancing CSV: {str(e)}")
+        logging.info(f"Wrote and enhanced {len(final_results)} results to {output_csv}")
 
 
 def update_locus_information(result: Dict, extract_annotate_results: List) -> None:
@@ -324,9 +359,15 @@ def clean_crispr_info(result: Dict) -> None:
 
 
 def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, threshold_species: float,
-                                 keep_sequence_loci: bool) -> None:
+                                 keep_sequence_loci: bool, clade_classifier: CRISPRCladeClassifier,
+                                 skip_species_assignment: bool = False) -> None:
     try:
-        # Verify reference directory exists
+        logging.info("========= Starting Species and Types Analysis =========")
+        logging.info(f"Skip species assignment: {skip_species_assignment}")
+        logging.info(f"Genomes folder: {genomes_folder}")
+        logging.info(f"Output directory: {output_dir}")
+
+        # Check if reference directory exists
         if not REFERENCE_LEVAN.exists():
             raise FileNotFoundError(f"Levan synthesis reference directory not found: {REFERENCE_LEVAN}")
 
@@ -336,52 +377,72 @@ def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, thresho
         if missing_files:
             raise FileNotFoundError(f"Missing levan reference files: {', '.join(missing_files)}")
 
+        # Create species finder directory and log its path
         species_finder_path = create_species_finder_folder(output_dir)
+        logging.info(f"Created species finder directory at: {species_finder_path}")
 
-        # Get and validate genome files - search both directly in folder and in subdirectories
+        # Get and validate genome files with detailed logging
+        logging.info("Collecting genome files...")
         genome_files = []
-
-        # Look for files directly in the genomes folder
         for fasta_file in genomes_folder.glob('*.fasta'):
             if fasta_file.is_file():
                 genome_files.append(fasta_file)
+                logging.info(f"Found root FASTA file: {fasta_file}")
 
-        # Also look in subdirectories
         for subdir in genomes_folder.iterdir():
             if subdir.is_dir():
+                logging.info(f"Checking subdirectory: {subdir}")
                 for fasta_file in subdir.glob('*.fasta'):
                     if fasta_file.is_file():
                         genome_files.append(fasta_file)
-
-        genome_files.sort()  # Sort for consistent ordering
+                        logging.info(f"Found FASTA file in subdirectory: {fasta_file}")
 
         if not genome_files:
-            # Log directory contents for debugging
             logging.error(f"Directory contents of {genomes_folder}:")
             for item in genomes_folder.iterdir():
                 logging.error(f"  {item}")
             raise ValueError(f"No FASTA files found in {genomes_folder} or its subdirectories")
 
-        logging.info(f"Found {len(genome_files)} genome files: {[f.name for f in genome_files]}")
-
-
-        # Rest of the function remains the same...
-        logging.info("Starting species metrics analysis")
-        run_species_metrics_for_all(genomes_folder, species_finder_path, threshold_species)
-        logging.info("Completed species metrics analysis")
-
-        clade_classifier = CRISPRCladeClassifier(matrix_path)
-
-        logging.info("Starting genome processing")
+        # Step 1: Process genomes first to get clade classifications
+        logging.info("Starting genome processing with classifier...")
         all_results = process_genomes(genome_files, clade_classifier)
         logging.info(f"Completed genome processing. Got {len(all_results)} results")
 
+        # Step 2: Run species metrics analysis with detailed logging
+        logging.info("========= Starting Species Metrics Analysis =========")
+
+        # Check reference genome directory
+        logging.info(f"Reference genomes directory path: {REFERENCE_GENOMES}")
+        if not REFERENCE_GENOMES.exists():
+            logging.error(f"Reference genomes directory does not exist: {REFERENCE_GENOMES}")
+            raise FileNotFoundError(f"Reference genomes directory not found: {REFERENCE_GENOMES}")
+        logging.info("Reference genomes directory exists")
+
+        if skip_species_assignment:
+            logging.info("Species assignment is set to be skipped")
+        else:
+            logging.info("Species assignment will be performed")
+
+        try:
+            run_species_metrics_for_all(
+                genomes_folder_path=genomes_folder,
+                species_finder_path=species_finder_path,
+                threshold_species=threshold_species,
+                skip_species_assignment=skip_species_assignment
+            )
+            logging.info("Species metrics analysis completed successfully")
+        except Exception as e:
+            logging.error(f"Error in species metrics analysis: {str(e)}")
+            logging.exception("Species metrics exception details:")
+            raise
+
+
+        # Step 3: Run type analysis
         extract_annotate_results = extract_annotate_assign(genomes_folder)
         logging.info(f"Obtained {len(extract_annotate_results)} annotation results")
 
-        # Run levan analysis for each genome
+        # Step 4: Run levan analysis for each genome
         logging.info("Starting levan synthesis analysis")
-        # Log full paths for debugging
         for genome_file in genome_files:
             logging.info(f"Full path for genome file: {genome_file}")
             try:
@@ -391,7 +452,6 @@ def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, thresho
                     strain_id=genome_file.stem
                 )
                 if levan_result is not None and not levan_result.empty:
-                    # Find corresponding result in all_results and add levan info
                     for result in all_results:
                         if result['name'] == genome_file.stem:
                             result['levan_synthesis'] = format_levan_result(levan_result.iloc[0].to_dict())
@@ -410,7 +470,7 @@ def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, thresho
                         result['levan_synthesis'] = f"Analysis failed: {str(e)}"
                         break
 
-        # Process final results...
+        # Step 5: Process final results just once, after all analyses are complete
         final_results = process_results(all_results, species_finder_path, extract_annotate_results, clade_classifier)
 
         if final_results:
@@ -418,7 +478,6 @@ def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, thresho
             write_results_to_csv(final_results, output_csv)
             logging.info(f"Wrote {len(final_results)} results to {output_csv}")
 
-        # Cleanup and finalize
         if keep_sequence_loci:
             keep_loci_files(output_dir)
         else:
@@ -476,8 +535,9 @@ def galaxy_runner():
     parser.add_argument('--input', required=True, help='Input genome file or folder containing genome files')
     parser.add_argument('--threshold_species', type=float, default=0.95, help='ANI threshold for species assignment')
     parser.add_argument('--keep_sequence_loci', action='store_true', help='Keep sequence loci files')
+    parser.add_argument('--skip_species_assignment', action='store_true', help='Skip species assignment step')
     parser.add_argument('--log_level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                        help='Logging level')
+                      help='Logging level')
     parser.add_argument('--output_dir', required=True, help='Output directory')
 
     args = parser.parse_args()
@@ -527,10 +587,19 @@ def galaxy_runner():
             logging.info(f"Starting analysis with genomes folder: {temp_genomes_folder}")
             logging.info(f"Results will be saved in: {output_dir}")
 
+            # Initialize the clade classifier here
+            logging.info(f"Initializing CRISPR clade classifier with matrix: {matrix_path}")
+            clade_classifier = CRISPRCladeClassifier(matrix_path)
+
             try:
-                run_species_and_types_finder(temp_genomes_folder, temp_dir_path,
-                                             threshold_species=args.threshold_species,
-                                             keep_sequence_loci=args.keep_sequence_loci)
+                run_species_and_types_finder(
+                    temp_genomes_folder,
+                    temp_dir_path,
+                    threshold_species=args.threshold_species,
+                    keep_sequence_loci=args.keep_sequence_loci,
+                    clade_classifier=clade_classifier,
+                    skip_species_assignment=args.skip_species_assignment
+                )
             except Exception as e:
                 logging.error(f"Error in run_species_and_types_finder: {str(e)}")
                 logging.exception("Exception details:")
@@ -556,9 +625,13 @@ def galaxy_runner():
         logging.info(f"Final contents of output directory: {list(output_dir.glob('*'))}")
         logging.info("Analysis completed successfully.")
 
+
     except Exception as e:
+
         logging.error(f"An unexpected error occurred: {str(e)}")
+
         logging.exception("Exception details:")
+
         sys.exit(1)
 
 
