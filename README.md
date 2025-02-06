@@ -169,3 +169,24 @@ For a comprehensive example of the analysis results, you can view a sample `exam
 
 [example.csv](https://github.com/beach-fossils/BioFago/blob/main/examples/example.csv)
 
+
+
+## About the Project
+
+**Funding & Timeline**
+- Project Reference: PRR-C05-i03-I-000179
+- Funded by: Plano de Recuperação e Resiliência (PRR)
+ - República Portuguesa
+ - União Europeia - NextGenerationEU
+- Duration: Jan 2023 - Sep 2025
+
+**Partners**
+- Universities: UM (Coordinator), FCUP, IPVC
+- Research Centers: INIAV
+- Industry: ANP, COTHN, Asfertglobal, Frutus, Granfer, CAB, Coopval, Fruoeste, Cooperfrutas
+
+
+## Contact
+
+Bioinformatician/ Software dev: José Diogo Moura (UM)
+email: jddmoura@gmail.com
