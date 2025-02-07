@@ -188,7 +188,7 @@ For a comprehensive example of the analysis results, you can view a sample `exam
 
 ## Scientific Documentation
 
-For a detailed scientific description of ErwinATyper's implementation and methodology, please refer to the [scientific document](https://github.com/beach-fossils/BioFago/blob/main/ErwinATyper_sci_doc.pdf).
+For a detailed scientific description of the project and ErwinATyper's implementation and methodology, please refer to the [scientific document](https://github.com/beach-fossils/BioFago/blob/main/ErwinATyper_sci_doc.pdf).
 
 
 ## Contact
