@@ -184,7 +184,7 @@ For a comprehensive example of the analysis results, you can view a sample `exam
 - Universities: UM (Coordinator), FCUP, IPVC
 - Research Centers: INIAV
 - Industry: ANP, COTHN, Asfertglobal, Frutus, Granfer, CAB, Coopval, Fruoeste, Cooperfrutas
-- 
+  
 
 ## Scientific Documentation
 
