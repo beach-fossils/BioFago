@@ -184,6 +184,11 @@ For a comprehensive example of the analysis results, you can view a sample `exam
 - Universities: UM (Coordinator), FCUP, IPVC
 - Research Centers: INIAV
 - Industry: ANP, COTHN, Asfertglobal, Frutus, Granfer, CAB, Coopval, Fruoeste, Cooperfrutas
+- 
+
+## Scientific Documentation
+
+For a detailed scientific description of ErwinATyper's implementation and methodology, please refer to the [scientific document](https://github.com/beach-fossils/BioFago/blob/main/ErwinATyper_documentation.pdf).
 
 
 ## Contact
