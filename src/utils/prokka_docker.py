@@ -2,6 +2,24 @@ import os
 import subprocess
 from pathlib import Path
 import shutil
+import logging
+import threading
+import time
+from typing import Optional
+import sys
+
+# Import quiet mode module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from quiet_mode import QUIET_MODE
+
+# Global semaphore for limiting Docker containers
+docker_semaphore: Optional[threading.Semaphore] = None
+
+def init_docker_semaphore(max_containers: int = 4):
+    """Initialize the Docker semaphore to limit concurrent Docker containers"""
+    global docker_semaphore
+    docker_semaphore = threading.Semaphore(max_containers)
+    logging.info(f"Docker semaphore initialized with limit of {max_containers} containers")
 
 def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_prefix):
     # Additional Prokka options
@@ -11,16 +29,22 @@ def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_
         '--species': 'amylovora',
         '--force': 'true'
     }
+    
+    # Add options to suppress output in quiet mode
+    if QUIET_MODE:
+        prokka_options['--quiet'] = 'true'
+        prokka_options['--norrna'] = 'true'
+        prokka_options['--notrna'] = 'true'
 
     # Check if Docker is running
     try:
         # Use 'sudo docker ps' if you truly need sudo for Docker listing.
         subprocess.run(['docker', 'ps'], shell=False, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError:
-        print("Error: Docker is not running, or 'sudo' permission is required. Please start Docker and try again.")
+        logging.error("Error: Docker is not running, or 'sudo' permission is required. Please start Docker and try again.")
         return
     except FileNotFoundError:
-        print("Error: Docker is not installed or not found in the system PATH.")
+        logging.error("Error: Docker is not installed or not found in the system PATH.")
         return
 
     # Get the filename without extension for output folder name
@@ -48,12 +72,33 @@ def run_prokka_docker(fasta_file, base_output_folder, custom_db_path, locus_tag_
     for option, value in prokka_options.items():
         prokka_command.extend([option, value])
 
-    # Execute Prokka command
+    # Execute Prokka command with Docker semaphore
+    global docker_semaphore
+    
+    # If semaphore is not initialized, create a default one
+    if docker_semaphore is None:
+        logging.warning("Docker semaphore not initialized, using default (4 containers)")
+        docker_semaphore = threading.Semaphore(4)
+    
+    # Acquire semaphore to limit Docker containers
+    docker_semaphore.acquire()
+    logging.info(f"Acquired Docker semaphore for {fasta_file}")
+    
     try:
-        subprocess.run(prokka_command, check=True)
-        print(f"Prokka annotation for {fasta_file} completed successfully.")
+        # Set up subprocess output handling based on quiet mode
+        # In quiet mode, redirect all output to PIPE to suppress it
+        if QUIET_MODE:
+            subprocess.run(prokka_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        else:
+            # In normal mode, let output go to terminal
+            subprocess.run(prokka_command, check=True)
+        logging.info(f"Prokka annotation for {fasta_file} completed successfully.")
     except subprocess.CalledProcessError as e:
-        print(f"Error: Prokka annotation for {fasta_file} failed with exit code {e.returncode}.")
+        logging.error(f"Error: Prokka annotation for {fasta_file} failed with exit code {e.returncode}.")
+    finally:
+        # Always release semaphore
+        docker_semaphore.release()
+        logging.info(f"Released Docker semaphore for {fasta_file}")
 
 def rename_gbk_files(base_folder):
     renamed_count = 0
@@ -69,16 +114,16 @@ def rename_gbk_files(base_folder):
 
                 try:
                     shutil.move(old_path, new_path)
-                    print(f"Renamed: {old_path} -> {new_path}")
+                    logging.info(f"Renamed: {old_path} -> {new_path}")
                     renamed_count += 1
                 except Exception as e:
                     errors.append(f"Error renaming {old_path}: {str(e)}")
 
-    print(f"\nTotal files renamed: {renamed_count}")
+    logging.info(f"Total files renamed: {renamed_count}")
     if errors:
-        print("\nErrors encountered:")
+        logging.warning("Errors encountered during renaming:")
         for error in errors:
-            print(error)
+            logging.warning(error)
 
 def copy_gbk_files(base_folder, destination_folder):
     copied_count = 0
@@ -95,16 +140,16 @@ def copy_gbk_files(base_folder, destination_folder):
 
                 try:
                     shutil.copy2(source_path, destination_path)
-                    print(f"Copied: {source_path} -> {destination_path}")
+                    logging.info(f"Copied: {source_path} -> {destination_path}")
                     copied_count += 1
                 except Exception as e:
                     errors.append(f"Error copying {source_path}: {str(e)}")
 
-    print(f"\nTotal files copied: {copied_count}")
+    logging.info(f"Total files copied: {copied_count}")
     if errors:
-        print("\nErrors encountered during copying:")
+        logging.warning("Errors encountered during copying:")
         for error in errors:
-            print(error)
+            logging.warning(error)
 
 def main():
     # Define the genomes and output directories
@@ -119,7 +164,7 @@ def main():
     # Iterate over each .fasta file and run Prokka
     for fasta_file in fasta_files:
         full_fasta_path = os.path.join(folder_with_fastas, fasta_file)
-        print(f"Processing file: {fasta_file}")
+        logging.info(f"Processing file: {fasta_file}")
         run_prokka_docker(
             fasta_file=full_fasta_path,
             base_output_folder=base_output_folder,

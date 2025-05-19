@@ -11,8 +11,12 @@ from utils.get_prokka_faa_file import get_prokka_faa_file
 import csv
 import tempfile
 import os
+import sys
 from typing import Dict, List, Tuple
 
+# Import quiet mode module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from quiet_mode import QUIET_MODE
 
 _PROTEIN_ALIGNER = PairwiseAligner(scoring='blastp', mode='local')
 
@@ -233,7 +237,14 @@ class BlastProteinv2:
                 '-out', str(self.db_folder / self.db_name)
             ]
             logging.debug(f"Running makeblastdb command: {' '.join(makeblastdb_cmd)}")
-            subprocess.run(makeblastdb_cmd, check=True)
+            
+            # Respect quiet mode when running subprocess
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(makeblastdb_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(makeblastdb_cmd, check=True)
+                
             logging.info("BLAST database created successfully.")
         except subprocess.CalledProcessError as e:
             logging.error(f"Error in making BLAST database: {e}")
@@ -249,7 +260,14 @@ class BlastProteinv2:
                 '-out', str(output_file)
             ]
             logging.debug(f"Running blastp command: {' '.join(blast_cmd)}")
-            subprocess.run(blast_cmd, check=True)
+            
+            # Respect quiet mode when running subprocess
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(blast_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(blast_cmd, check=True)
+                
             logging.info(f"BLAST results written to {output_file}.")
         except subprocess.CalledProcessError as e:
             logging.error(f"Error in running BLAST: {e}")
@@ -290,49 +308,6 @@ class BlastProteinv2:
             logging.error(f"Error in analyzing BLAST results from {blast_output_file}: {e}")
 
         return best_hit
-
-    # def process_csv(self, input_csv, proteins_faa, final_csv_file):
-    #     # Make sure the BLAST database is created
-    #     self.make_blast_db(proteins_faa)
-    #
-    #     results = []
-    #     with open(input_csv, 'r') as csvfile:
-    #         reader = csv.DictReader(csvfile)
-    #         for row in reader:
-    #             if row['Translation']:
-    #                 # Create a temporary FASTA file for the query sequence
-    #                 with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix=".fasta") as temp_fasta:
-    #                     temp_fasta.write(
-    #                         f">{row['Locus Tag']} {row['Product']}~~~{row['Gene']}\n{row['Translation']}\n")
-    #                     temp_fasta_name = temp_fasta.name
-    #
-    #                 output_filename = f"{row['Locus']}_{row['Gene']}_{row['Locus Tag']}_blast_output.txt"
-    #                 temp_output_file = self.results_folder / output_filename
-    #                 self.run_blast(temp_fasta_name, temp_output_file)
-    #                 best_hit = self.analyze_blast_results(temp_output_file)
-    #
-    #                 # Add locus and gene information to the BLAST results file
-    #                 with open(temp_output_file, 'a') as blast_file:
-    #                     blast_file.write(f"\nLocus: {row['Locus']}, Gene: {row['Gene']}\n")
-    #
-    #                 row['Best BLAST Identity'] = best_hit['pident'] if best_hit else ''
-    #                 row['Alignment Length'] = best_hit['length'] if best_hit else ''
-    #                 row['Translation Length'] = len(row['Translation']) if row['Translation'] else ''
-    #                 row['Reference Length'] = best_hit['slen'] if best_hit else ''
-    #
-    #                 # Clean up the temporary file
-    #                 Path(temp_fasta_name).unlink()
-    #
-    #             results.append(row)
-    #
-    #     with open(final_csv_file, 'w', newline='') as csvfile:
-    #         fieldnames = ["Locus", "Gene", "Locus Tag", "Product", "Protein ID", "Translation", "Nucleotide Sequence",
-    #                       "Best BLAST Identity", "Alignment Length", "Translation Length", "Reference Length"]
-    #         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-    #         writer.writeheader()
-    #         for result in results:
-    #             writer.writerow(result)
-    #     logging.info(f"Created final CSV file: {final_csv_file}")
 
     def process_csv(self, input_csv, proteins_faa, final_csv_file):
         # Make sure the BLAST database is created
@@ -409,22 +384,6 @@ class TypeAnalysis:
                     total_length += len(line.strip())
         return total_length
 
-    # def analyze_locus(self):
-    #     """
-    #     Analyze the loci by calculating the translation and reference coverage and determining presence/absence.
-    #     """
-    #     df = pd.read_csv(self.input_csv)
-    #     df['Translation Coverage'] = df['Alignment Length'] / df['Translation Length']
-    #     df['Reference Coverage'] = df['Alignment Length'] / df['Reference Length']
-    #     df['Presence/Absence'] = ((df['Best BLAST Identity'] >= 95) &
-    #                               (df['Translation Coverage'] >= 0.9) &
-    #                               (df['Reference Coverage'] >= 0.9)).astype(int)
-    #     df['Truncated'] = ((df['Best BLAST Identity'] >= 95) &
-    #                        (df['Translation Coverage'] < 0.9) &
-    #                        ((df['Translation Coverage'] + df['Reference Coverage']) > 0.05)).astype(int)
-    #     df.to_csv(self.output_csv, index=False)
-    #     return df
-
     def analyze_locus(self):
         df = pd.read_csv(self.input_csv)
         df['Query Coverage'] = df['Alignment Length'] / df['Query Length']
@@ -477,36 +436,6 @@ class TypeAnalysis:
         total_query_coverage = group['Query Coverage'].sum()
         total_subject_coverage = group['Subject Coverage'].sum()
         return (total_query_coverage + total_subject_coverage) / 2
-
-    # def assign_type(self, df):
-    #     """
-    #     Assign a type to each locus based on the analysis.
-    #     """
-    #     report = []
-    #     grouped = df.groupby('Locus')
-    #
-    #     for locus, group in grouped:
-    #         total_genes = group.shape[0]
-    #         present_genes = group['Presence/Absence'].sum()
-    #         truncated_genes = self.count_truncated_genes(group)
-    #         extra_genes = self.count_extra_genes(group)
-    #         locus_coverage = self.calculate_locus_coverage(group)
-    #
-    #         type_assigned = self.determine_type(present_genes, truncated_genes, extra_genes, locus_coverage)
-    #
-    #         report.append({
-    #             'Locus': locus,
-    #             'Total Genes': total_genes,
-    #             'Present Genes': present_genes,
-    #             'Truncated Genes': truncated_genes,
-    #             'Extra Genes': extra_genes,
-    #             'Locus Coverage': round(locus_coverage, 2),
-    #             'Type': type_assigned
-    #         })
-    #
-    #     type_report = pd.DataFrame(report)
-    #     final_type_locus, final_type = self.select_best_type(type_report)
-    #     return type_report, final_type_locus, final_type
 
     def assign_type(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, str, str, str, Dict[str, str]]:
         try:
@@ -641,34 +570,6 @@ class TypeAnalysis:
                 return locus_type
         return ''
 
-    # def determine_type(self, present_genes, truncated_genes, extra_genes, locus_coverage):
-    #     """
-    #     Determine the type of a locus based on various criteria.
-    #     """
-    #     if present_genes + truncated_genes == self.number_of_genes:
-    #         if present_genes == self.number_of_genes:
-    #             if truncated_genes == 0 and extra_genes == 0:
-    #                 if locus_coverage >= 0.99:
-    #                     return 'Perfect'
-    #         if truncated_genes == 0 and extra_genes == 0:
-    #             if locus_coverage >= 0.99:
-    #                 return 'Very high'
-    #         if truncated_genes <= 3 and extra_genes == 0:
-    #             if locus_coverage >= 0.99:
-    #                 return 'High'
-    #         if truncated_genes <= 3 and extra_genes <= 1:
-    #             if locus_coverage >= 0.95:
-    #                 return 'Good'
-    #         if truncated_genes <= 3 and extra_genes <= 2:
-    #             if locus_coverage >= 0.90:
-    #                 return 'Low'
-    #     else:
-    #         if locus_coverage >= 0.95 and truncated_genes <= 3 and extra_genes <= 1:
-    #             return 'Good'
-    #         elif locus_coverage >= 0.90 and truncated_genes <= 3 and extra_genes <= 2:
-    #             return 'Low'
-    #     return 'None'
-
     def determine_type(self, present_genes, truncated_genes, extra_genes, locus_coverage, different_genes):
         # Perfect - Everything matches exactly
         if not different_genes and present_genes == self.number_of_genes and truncated_genes == 0 and extra_genes == 0 and locus_coverage >= 0.99:
@@ -698,18 +599,6 @@ class TypeAnalysis:
 
         # Default case
         return 'Very low'
-
-    # def select_best_type(self, type_report):
-    #     """
-    #     Select the best type from the type report based on the hierarchy.
-    #     """
-    #     highest_priority_type = 'None'
-    #     highest_priority_locus = ''
-    #     for idx, row in type_report.iterrows():
-    #         if self.type_hierarchy.index(row['Type']) > self.type_hierarchy.index(highest_priority_type):
-    #             highest_priority_type = row['Type']
-    #             highest_priority_locus = row['Locus']
-    #     return highest_priority_locus, highest_priority_type
 
     def select_best_type(self, type_report):
         type_hierarchy = ['None', 'Low', 'Good', 'High', 'Very High', 'Perfect']

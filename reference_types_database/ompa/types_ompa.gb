@@ -1,0 +1,449 @@
+LOCUS       OM01_GCA_012371885                  1068 bp    DNA     linear   BCT 06-MAY-2025
+DEFINITION  Erwinia amylovora outer membrane protein A (ompA) gene, complete
+            cds. Type OM01.
+ACCESSION   OM01
+VERSION     3
+KEYWORDS    outer membrane protein A; ompA; porin.
+SOURCE      Erwinia amylovora
+  ORGANISM  Erwinia amylovora
+            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacterales;
+            Erwiniaceae; Erwinia.
+FEATURES             Location/Qualifiers
+     source          1..1068
+                     /organism="Erwinia amylovora"
+                     /mol_type="genomic DNA"
+                     /strain="GCA_012371885"
+                     /db_xref="taxon:55206"
+     gene            1..1068
+                     /gene="ompA"
+                     /locus_tag="OM01"
+     CDS             1..1068
+                     /gene="ompA"
+                     /locus_tag="OM01"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="outer membrane protein A type OM01"
+                     /protein_id="OM01_1"
+                     /translation="MKKTAIAIAVALAGFATVAQAAPKDDTWYTGGKLGWSQYHDTGYY
+                     GNGYENNDGPTHESQLGAGAFLGYQANQYLGFELGYDWLGRMPNKGDVTNGAFKAQGIQ
+                     MAAKLSYPIADDLDVYTRLGGMVWRADATQTNPTYGRISNHDTGVSPLAAVGVEYAVTK
+                     NWATRLDYQWVNNIGDAGTVGARPDNSMLSVGVSYRFGQDEAAPVVAPAPAPAPVVETK
+                     RFTLKSDVLFTFNKSTLKPEGQQALDQLYTQLSNLDPKDGSVVVLGYTDRIGSEQYNQK
+                     LSEKRAQSVVDYLVSKGIPSNKISARGEGKSNPVTGNTCDSVKGRKALIDCLAPDRRVE
+                     IQVKGIKDVVTQPQA"
+                     /db_xref="UniProtKB/TrEMBL:D4I0C9"
+                     /db_xref="InterPro:IPR050330"
+                     /db_xref="InterPro:IPR011250"
+                     /db_xref="InterPro:IPR006664"
+                     /db_xref="InterPro:IPR002368"
+                     /db_xref="PFAM:PF00691"
+                     /db_xref="PFAM:PF01389"
+                     /db_xref="HAMAP:MF_00842"
+                     /db_xref="CDD:cd07185"
+                     /function="Required for conjugation with F-type plasmids;
+                     serves as the mating receptor on recipient cells"
+                     /function="With TolR plays a role in maintaining the
+                     position of the peptidoglycan cell wall in the periplasm"
+                     /function="Acts as a porin with low permeability that
+                     allows slow penetration of small solutes"
+                     /note="OmpA cluster 1 representative"
+                     /note="Original strain ID: GCA_012371885"
+                     /note="Cluster size: 454 sequences"
+                     /note="Cluster frequency: 85.02%"
+                     /note="This protein belongs to the outer membrane OOP (TC
+                     1.B.6) superfamily, OmpA family"
+ORIGIN
+        1 atgaaaaaga cagctatcgc aattgcagtg gcactggctg gcttcgctac cgtagcgcag
+       61 gccgccccta aagatgacac ctggtacacc ggtggtaagc tgggctggtc tcagtaccat
+      121 gatactggtt actacggtaa cggttacgaa aacaacgatg gcccaactca cgaaagccaa
+      181 ctgggtgctg gtgcattcct tggctatcag gctaaccagt accttggttt cgagctgggc
+      241 tatgactggc tgggccgtat gcctaacaaa ggcgacgtca ccaacggtgc cttcaaagct
+      301 cagggcattc agatggcagc caagttaagc tacccaatcg ctgacgatct ggacgtgtac
+      361 acccgtctgg gtggtatggt atggcgcgct gacgcaactc agactaaccc aacctatggt
+      421 cgcatcagca accacgatac cggtgtttct ccactggcag ccgttggtgt tgaatatgca
+      481 gtgaccaaaa actgggcaac ccgtctggac taccagtggg ttaacaacat tggtgatgca
+      541 ggtaccgttg gtgcgcgtcc tgacaactct atgctgagcg ttggtgtttc ctaccgtttc
+      601 ggccaggatg aagcagcgcc agttgttgct ccagcgccag ctccggctcc agttgtagaa
+      661 accaagcgtt tcaccctgaa gtctgacgtg ctgttcactt tcaacaaatc tactctgaaa
+      721 ccagaaggtc agcaggctct ggatcagctg tatactcagt tgagcaatct ggatcctaaa
+      781 gatggttctg ttgttgtact gggctacact gaccgtatcg gttcagagca gtacaaccag
+      841 aaactgtctg agaaacgtgc tcagtctgta gtggactacc tcgtctctaa aggcatccct
+      901 tctaacaaga tctctgcacg tggcgagggt aaatctaacc ctgttactgg caacacctgt
+      961 gacagcgtga aaggccgtaa agccctgatc gactgcctgg cgccagaccg tcgcgtagag
+     1021 attcaggtta aaggcatcaa agacgttgtg acccagccac aggcttaa
+//
+
+LOCUS       OM02_GCA_012371495                 1068 bp    DNA     linear   BCT 06-MAY-2025
+DEFINITION  Erwinia amylovora outer membrane protein A (ompA) gene, complete
+            cds. Type OM02.
+ACCESSION   OM02
+VERSION     3
+KEYWORDS    outer membrane protein A; ompA; porin.
+SOURCE      Erwinia amylovora
+  ORGANISM  Erwinia amylovora
+            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacterales;
+            Erwiniaceae; Erwinia.
+FEATURES             Location/Qualifiers
+     source          1..1068
+                     /organism="Erwinia amylovora"
+                     /mol_type="genomic DNA"
+                     /strain="GCA_012371495"
+                     /db_xref="taxon:55206"
+     gene            1..1068
+                     /gene="ompA"
+                     /locus_tag="OM02"
+     CDS             1..1068
+                     /gene="ompA"
+                     /locus_tag="OM02"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="outer membrane protein A type OM02"
+                     /protein_id="OM02_1"
+                     /translation="MKKTAIAIAVALAGFATVAQAAPKDDTWYTGGKLGWSQYHDTGYY
+                     GNGYENNDGPTHESQLGAGAFLGYQANQYLGFELGYDWLGRMPNKGDVTNGAFKAQGIQ
+                     MAAKLSYPIADDLDVYTRLGGMVWRADATQTNPTYGRISNHDTGVSPLAAVGVEYAVTK
+                     NWATRLDYQWVNNIGDAGTVGARPDNSMLSVGVSYRFGQDEAAPVVAPAPAPAPVVETK
+                     RFTLKSDVLFTFNKSTLKPEGQQALDQLYTQLSNLDPKDGSVIVLGYTDRIGSEQYNQK
+                     LSEKRAQSVVDYLVSKGIPSNKISARGEGKSNPVTGNTCDSVKGRKALIDCLAPDRRVE
+                     IQVKGIKDVVTQPQA"
+                     /db_xref="UniProtKB/TrEMBL:D4I0C9"
+                     /db_xref="InterPro:IPR050330"
+                     /db_xref="InterPro:IPR011250"
+                     /db_xref="InterPro:IPR006664"
+                     /db_xref="InterPro:IPR002368"
+                     /db_xref="PFAM:PF00691"
+                     /db_xref="PFAM:PF01389"
+                     /db_xref="HAMAP:MF_00842"
+                     /db_xref="CDD:cd07185"
+                     /function="Required for conjugation with F-type plasmids;
+                     serves as the mating receptor on recipient cells"
+                     /function="With TolR plays a role in maintaining the
+                     position of the peptidoglycan cell wall in the periplasm"
+                     /function="Acts as a porin with low permeability that
+                     allows slow penetration of small solutes"
+                     /note="OmpA cluster 2 representative"
+                     /note="Original strain ID: GCA_012371495"
+                     /note="Cluster size: 38 sequences"
+                     /note="Cluster frequency: 7.12%"
+                     /note="This protein belongs to the outer membrane OOP (TC
+                     1.B.6) superfamily, OmpA family"
+ORIGIN
+        1 ttaagcctgt ggctgggtca caacgtcttt gatgccttta acctgaatct ctacgcgacg
+       61 gtctggcgcc aggcagtcga tcaaggcttt acggcctttc acgctgtcac aggtgttgcc
+      121 agtaacaggg ttagatttac cctcgccacg tgcagagatc ttgttagaag ggatgccttt
+      181 agagacgagg tagtccacta cagactgagc acgtttctca gacagtttct ggttgtactg
+      241 ctctgaaccg atacggtcag tgtagcccag tacaataaca gaaccatctt taggatccag
+      301 attgctcaac tgagtataca gctgatccag agcctgctga ccttctggtt tcagagtaga
+      361 tttgttgaaa gtgaacagca cgtcagactt cagggtgaaa cgcttggttt ctacaactgg
+      421 agccggagct ggcgctggag caacaactgg cgctgcttca tcctggccga aacggtagga
+      481 aacaccaacg ctcagcatag agttgtcagg acgcgcacca acggtacctg catcaccaat
+      541 gttgttaacc cactggtagt ccagacgggt tgcccagttt ttggtcactg catattcaac
+      601 accaacggca gccagtggag aaacaccggt atcgtggttg ctgatgcgac cataggttgg
+      661 gttagtctga gttgcgtcag cgcgccatac cataccaccc agacgggtgt acacgtccag
+      721 atcgtcagcg attgggtagc ttaacttggc tgccatctga atgccctgag ctttgaaggc
+      781 accgttggtg acgtcgcctt tgttaggcat acggcccagc cagtcatagc ccagctcgaa
+      841 accaaggtac tggttagcct gatagccaag gaatgcacca gcacccagtt ggctttcgtg
+      901 agttgggcca tcgttgtttt cgtaaccgtt accgtagtaa ccagtatcat ggtactgaga
+      961 ccagcccagc ttaccaccgg tgtaccaggt gtcatcttta ggggcggcct gcgctacggt
+     1021 agcgaagcca gccagtgcca ctgcaattgc gatagctgtc tttttcat
+//
+
+LOCUS       OM03_GCA_012367585                 1068 bp    DNA     linear   BCT 06-MAY-2025
+DEFINITION  Erwinia amylovora outer membrane protein A (ompA) gene, complete
+            cds. Type OM03.
+ACCESSION   OM03
+VERSION     3
+KEYWORDS    outer membrane protein A; ompA; porin.
+SOURCE      Erwinia amylovora
+  ORGANISM  Erwinia amylovora
+            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacterales;
+            Erwiniaceae; Erwinia.
+FEATURES             Location/Qualifiers
+     source          1..1068
+                     /organism="Erwinia amylovora"
+                     /mol_type="genomic DNA"
+                     /strain="GCA_012367585"
+                     /db_xref="taxon:55206"
+     gene            1..1068
+                     /gene="ompA"
+                     /locus_tag="OM03"
+     CDS             1..1068
+                     /gene="ompA"
+                     /locus_tag="OM03"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="outer membrane protein A type OM03"
+                     /protein_id="OM03_1"
+                     /translation="MKKTAIAIAVALAGFATVAQAAPKDDTWYTGGKLGWSQYHDTGYY
+                     GNGYENNDGPTHESQLGAGAFLGYQANQYLGFELGYDWLGRMPNKGDVTNGAFKAQGIQ
+                     VAAKLSYPIADDLDVYTRLGGMVWRADATQTNPTYGRISNHDTGVSPLAAVGVEYAVTK
+                     NWATRLDYQWVNNIGDAGTVGARPDNSMLSVGVSYRFGQDEAAPVVAPAPAPAPVVETK
+                     RFTLKSDVLFTFNKSTLKPEGQQALDQLYTQLSNLDPKDGSVVVLGYTDRIGSEQYNQK
+                     LSEKRAQSVVDYLVSKGIPSNKISARGEGKSNPVTGNTCDSVKGRKALIDCLAPDRRVE
+                     IQVKGIKDVVTQPQA"
+                     /db_xref="UniProtKB/TrEMBL:D4I0C9"
+                     /db_xref="InterPro:IPR050330"
+                     /db_xref="InterPro:IPR011250"
+                     /db_xref="InterPro:IPR006664"
+                     /db_xref="InterPro:IPR002368"
+                     /db_xref="PFAM:PF00691"
+                     /db_xref="PFAM:PF01389"
+                     /db_xref="HAMAP:MF_00842"
+                     /db_xref="CDD:cd07185"
+                     /function="Required for conjugation with F-type plasmids;
+                     serves as the mating receptor on recipient cells"
+                     /function="With TolR plays a role in maintaining the
+                     position of the peptidoglycan cell wall in the periplasm"
+                     /function="Acts as a porin with low permeability that
+                     allows slow penetration of small solutes"
+                     /note="OmpA cluster 3 representative"
+                     /note="Original strain ID: GCA_012367585"
+                     /note="Cluster size: 32 sequences"
+                     /note="Cluster frequency: 5.99%"
+                     /note="This protein belongs to the outer membrane OOP (TC
+                     1.B.6) superfamily, OmpA family"
+ORIGIN
+        1 atgaaaaaga cagctatcgc aattgcagtg gcactggctg gcttcgctac cgtagcgcag
+       61 gccgccccta aagatgacac ctggtacacc ggtggtaagc tgggctggtc tcagtaccat
+      121 gatactggtt actacggtaa cggttacgaa aacaacgatg gcccaactca cgaaagccaa
+      181 ctgggtgctg gtgcattcct tggctatcag gctaaccagt accttggttt cgagctgggc
+      241 tatgactggc tgggccgtat gcctaacaaa ggcgacgtca ccaacggtgc cttcaaagct
+      301 cagggcattc agatggcagc caagttaagc tacccaatcg ctgacgatct ggacgtgtac
+      361 acccgtctgg gtggtatggt atggcgcgct gacgcaactc agactaaccc aacctatggt
+      421 cgcatcagca accacgatac cggtgtttct ccactggcag ccgttggtgt tgaatatgca
+      481 gtgaccaaaa actgggcaac ccgtctggac taccagtggg ttaacaacat tggtgatgca
+      541 ggtaccgttg gtgcgcgtcc tgacaactct atgctgagcg ttggtgtttc ctaccgtttc
+      601 ggccaggatg aagcagcgcc agttgttgct ccagcgccag ctccggctcc agttgtagaa
+      661 accaagcgtt tcaccctgaa gtctgacgtg ctgttcactt tcaacaaatc tactctgaaa
+      721 ccagaaggtc agcaggctct ggatcagctg tatactcagt tgagcaatct ggatcctaaa
+      781 gatggttctg ttgttgtact gggctacact gaccgtatcg gttcagagca gtacaaccag
+      841 aaactgtctg agaaacgtgc tcagtctgta gtggactacc tcgtctctaa aggcatccct
+      901 tctaacaaga tctctgcacg tggcgagggt aaatctaacc ctgttactgg caacacctgt
+      961 gacagcgtga aaggccgtaa agccctgatc gactgcctgg cgccagaccg tcgcgtagag
+     1021 attcaggtta aaggcatcaa agacgttgtg acccagccac aggcttaa
+//
+
+LOCUS       OM04_GCA_023183825                  1068 bp    DNA     linear   BCT 06-MAY-2025
+DEFINITION  Erwinia amylovora outer membrane protein A (ompA) gene, complete
+            cds. Type OM04.
+ACCESSION   OM04
+VERSION     3
+KEYWORDS    outer membrane protein A; ompA; porin.
+SOURCE      Erwinia amylovora
+  ORGANISM  Erwinia amylovora
+            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacterales;
+            Erwiniaceae; Erwinia.
+FEATURES             Location/Qualifiers
+     source          1..1068
+                     /organism="Erwinia amylovora"
+                     /mol_type="genomic DNA"
+                     /strain="GCA_023183825"
+                     /db_xref="taxon:55206"
+     gene            1..1068
+                     /gene="ompA"
+                     /locus_tag="OM04"
+     CDS             1..1068
+                     /gene="ompA"
+                     /locus_tag="OM04"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="outer membrane protein A type OM04"
+                     /protein_id="OM04_1"
+                     /translation="MKKTAIAIAVALAGFATVAQAAPKDDTWYTGGKLGWSQYHDTGYY
+                     GNGYENNDGPTHESQLGAGAFLGYQANQYLGFELGYDWLGRMPNKGDVTNGTFKAQGIQ
+                     MAAKLSYPIADDLDVYTRLGGMVWRADATQTNPTYGRISNHDTGVSPLAAVGVEYAVTK
+                     NWATRLDYQWVNNIGDAGTVGARPDNSMLSVGVSYRFGQDEAAPVVAPAPAPAPVVETK
+                     RFTLKSDVLFTFNKSTLKPEGQQALDQLYTQLSNLDPKDGSVVVLGYTDRIGSEQYNQK
+                     LSEKRAQSVVDYLVSKGIPSNKISARGEGKSNPVTGNTCDSVKGRKALIDCLAPDRRVE
+                     IQVKGIKDVVTQPQA"
+                     /db_xref="UniProtKB/TrEMBL:D4I0C9"
+                     /db_xref="InterPro:IPR050330"
+                     /db_xref="InterPro:IPR011250"
+                     /db_xref="InterPro:IPR006664"
+                     /db_xref="InterPro:IPR002368"
+                     /db_xref="PFAM:PF00691"
+                     /db_xref="PFAM:PF01389"
+                     /db_xref="HAMAP:MF_00842"
+                     /db_xref="CDD:cd07185"
+                     /function="Required for conjugation with F-type plasmids;
+                     serves as the mating receptor on recipient cells"
+                     /function="With TolR plays a role in maintaining the
+                     position of the peptidoglycan cell wall in the periplasm"
+                     /function="Acts as a porin with low permeability that
+                     allows slow penetration of small solutes"
+                     /note="OmpA cluster 4 representative"
+                     /note="Original strain ID: GCA_023183825"
+                     /note="Cluster size: 6 sequences"
+                     /note="Cluster frequency: 1.12%"
+                     /note="This protein belongs to the outer membrane OOP (TC
+                     1.B.6) superfamily, OmpA family"
+ORIGIN
+        1 atgaaaaaga cagctatcgc aattgcagtg gcactggctg gcttcgctac cgtagcgcag
+       61 gccgccccta aagatgacac ctggtacacc ggtggtaagc tgggctggtc tcagtaccat
+      121 gatactggtt actacggtaa cggttacgaa aacaacgatg gcccaactca cgaaagccaa
+      181 ctgggtgctg gtgcattcct tggctatcag gctaaccagt accttggttt cgagctgggc
+      241 tatgactggc tgggccgtat gcctaacaaa ggcgacgtca ccaacggtac cttcaaagct
+      301 cagggcattc agatggcagc caagttaagc tacccaatag ctgacgatct ggacgtgtac
+      361 acccgtctgg gtggtatggt atggcgcgct gacgcaactc agactaaccc aacctatggt
+      421 cgcatcagca accacgatac cggtgtttct ccactggcag ccgttggtgt tgaatatgca
+      481 gtgaccaaaa actgggcaac ccgtctggac taccagtggg ttaacaacat tggtgatgca
+      541 ggtaccgttg gtgcgcgtcc tgacaactct atgctgagcg ttggtgtttc ctaccgtttc
+      601 ggccaggatg aagcagcgcc agttgttgct ccagcgccag ctccggctcc agttgtagaa
+      661 accaagcgtt tcaccctgaa gtctgacgtg ctgttcactt tcaacaaatc tactctgaaa
+      721 ccagaaggtc agcaggctct ggatcagctg tatactcagt tgagcaatct ggatcctaaa
+      781 gatggttctg ttgttgtact gggctacact gaccgtatcg gttcagagca gtacaaccag
+      841 aaactgtctg agaaacgtgc tcagtctgta gtggactacc tcgtctctaa aggcatccct
+      901 tctaacaaga tctctgcacg tggcgagggt aaatctaacc ctgttactgg caacacctgt
+      961 gacagcgtga aaggccgtaa agccctgatc gactgcctgg cgccagaccg tcgcgtagag
+     1021 attcaggtta aaggcatcaa agacgttgtg acccagccac aggcttaa
+//
+
+LOCUS       OM05_GCF_012367305                 1068 bp    DNA     linear   BCT 06-MAY-2025
+DEFINITION  Erwinia amylovora outer membrane protein A (ompA) gene, complete
+            cds. Type OM05.
+ACCESSION   OM05
+VERSION     3
+KEYWORDS    outer membrane protein A; ompA; porin.
+SOURCE      Erwinia amylovora
+  ORGANISM  Erwinia amylovora
+            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacterales;
+            Erwiniaceae; Erwinia.
+FEATURES             Location/Qualifiers
+     source          1..1068
+                     /organism="Erwinia amylovora"
+                     /mol_type="genomic DNA"
+                     /strain="GCF_012367305"
+                     /db_xref="taxon:55206"
+     gene            1..1068
+                     /gene="ompA"
+                     /locus_tag="OM05"
+     CDS             1..1068
+                     /gene="ompA"
+                     /locus_tag="OM05"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="outer membrane protein A type OM05"
+                     /protein_id="OM05_1"
+                     /translation="MKKTAIAIAVALAGFATVAQAAPKDDTWYTGGKLGWSQYHDTGYY
+                     GNGYENNDGPTHESQLGAGAFLGYQANQYLGFELGYDWLGRMPNKGDVTNGAFKAQGIQ
+                     MAAKLSYPIADDLDVYTRLGGMVWRADATQTNPTYGRISNHDTGVSPLAAVGVEYAVTK
+                     NWATRLDYQWVNNIGDAGTVGARPDNSMLSVGVSYRFGQDEAAPVVAPAPAPAPVVETK
+                     RFTLKSDVLFTFNKSTLKPEGQQALDQLYTQLSNLDPKDGSVVVLGYTDRIGSEQYNQK
+                     LSEKRGQSVVDYLVSKGIPSNKISARGEGKSNPVTGNTCDSVKGRKALIDCLAPDRRVE
+                     IQVKGIKDVVTQPQA"
+                     /db_xref="UniProtKB/TrEMBL:D4I0C9"
+                     /db_xref="InterPro:IPR050330"
+                     /db_xref="InterPro:IPR011250"
+                     /db_xref="InterPro:IPR006664"
+                     /db_xref="InterPro:IPR002368"
+                     /db_xref="PFAM:PF00691"
+                     /db_xref="PFAM:PF01389"
+                     /db_xref="HAMAP:MF_00842"
+                     /db_xref="CDD:cd07185"
+                     /function="Required for conjugation with F-type plasmids;
+                     serves as the mating receptor on recipient cells"
+                     /function="With TolR plays a role in maintaining the
+                     position of the peptidoglycan cell wall in the periplasm"
+                     /function="Acts as a porin with low permeability that
+                     allows slow penetration of small solutes"
+                     /note="OmpA cluster 5 representative"
+                     /note="Original strain ID: GCF_012367305"
+                     /note="Cluster size: 2 sequences"
+                     /note="Cluster frequency: 0.37%"
+                     /note="This protein belongs to the outer membrane OOP (TC
+                     1.B.6) superfamily, OmpA family"
+ORIGIN
+        1 ttaagcctgt ggctgggtca caacgtcttt gatgccttta acctgaatct ctacgcgacg
+       61 gtctggcgcc aggcagtcga tcagggcttt acggcctttc acgctgtcac aggtgttgcc
+      121 agtaacaggg ttagatttac cctcgccacg tgcagagatc ttgttagaag ggatgccttt
+      181 agagacgagg tagtccacta cagactgacc acgtttctca gacagtttct ggttgtactg
+      241 ctctgaaccg atacggtcag tgtagcccag tacaacaaca gaaccatctt taggatccag
+      301 attgctcaac tgagtataca gctgatccag agcctgctga ccttctggtt tcagagtaga
+      361 tttgttgaaa gtgaacagca cgtcagactt cagggtgaaa cgcttggttt ctacaactgg
+      421 agccggagct ggcgctggag caacaactgg cgctgcttca tcctggccga aacggtagga
+      481 aacaccaacg ctcagcatag agttgtcagg acgcgcacca acggtacctg catcaccaat
+      541 gttgttaacc cactggtagt ccagacgggt tgcccagttt ttggtcactg catattcaac
+      601 accaacggct gccagtggag aaacaccggt atcgtggttg ctgatgcgac cataggttgg
+      661 gttagtctga gttgcgtcag cgcgccatac cataccaccc agacgggtgt acacgtccag
+      721 atcgtcagct attgggtagc ttaacttggc tgccatctga atgccctgag ctttgaaggc
+      781 accgttggtg acgtcgcctt tgttaggcat acggcccagc cagtcatagc ccagctcgaa
+      841 accaaggtac tggttagcct gatagccaag gaatgcacca gcacccagtt ggctttcgtg
+      901 agttgggcca tcgttgtttt cgtaaccgtt accgtagtaa ccagtatcat ggtactgaga
+      961 ccagcccagc ttaccaccgg tgtaccaggt gtcatcttta ggggcggcct gcgctacggt
+     1021 agcgaagcca gccagtgcca ctgcaattgc gatagctgtc tttttcat
+//
+
+LOCUS       OM06_GCF_012371575                 1068 bp    DNA     linear   BCT 06-MAY-2025
+DEFINITION  Erwinia amylovora outer membrane protein A (ompA) gene, complete
+            cds. Type OM06.
+ACCESSION   OM06
+VERSION     3
+KEYWORDS    outer membrane protein A; ompA; porin.
+SOURCE      Erwinia amylovora
+  ORGANISM  Erwinia amylovora
+            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacterales;
+            Erwiniaceae; Erwinia.
+FEATURES             Location/Qualifiers
+     source          1..1068
+                     /organism="Erwinia amylovora"
+                     /mol_type="genomic DNA"
+                     /strain="GCF_012371575"
+                     /db_xref="taxon:55206"
+     gene            1..1068
+                     /gene="ompA"
+                     /locus_tag="OM06"
+     CDS             1..1068
+                     /gene="ompA"
+                     /locus_tag="OM06"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="outer membrane protein A type OM06"
+                     /protein_id="OM06_1"
+                     /translation="MKKTAIAIAVALAGFATVAQAAPKDDTWYTGGKLGWSQYHDTGYY
+                     GNGYENNDGPTHESQLGAGAFLGYQANQYLGFELGYDWLGRMPNKGDVTNGAFKAQGIQ
+                     MAAKLSYPIADDLDVYTRLGGMVWRADATQTNPTYGRISNHDTGVSPLAAVGVEYAVTK
+                     NWATRLDYQWVNNIGDAGTVGARPDNSMLSVGVSYRFGQDEAAPVVAPAPAPAPVVETK
+                     RFTLKSDVLFTFNKSTLKPEGQQALDQLYTQLSNLDPKDGSVVVLGYTDRIGSEQYNQK
+                     LSEKRAQSVVDYLVSKGIPSNKISARGEGKSNPVTGNTCDSVKGRKALIDCLAPDRCVE
+                     IQVKGIKDVVTQPQA"
+                     /db_xref="UniProtKB/TrEMBL:D4I0C9"
+                     /db_xref="InterPro:IPR050330"
+                     /db_xref="InterPro:IPR011250"
+                     /db_xref="InterPro:IPR006664"
+                     /db_xref="InterPro:IPR002368"
+                     /db_xref="PFAM:PF00691"
+                     /db_xref="PFAM:PF01389"
+                     /db_xref="HAMAP:MF_00842"
+                     /db_xref="CDD:cd07185"
+                     /function="Required for conjugation with F-type plasmids;
+                     serves as the mating receptor on recipient cells"
+                     /function="With TolR plays a role in maintaining the
+                     position of the peptidoglycan cell wall in the periplasm"
+                     /function="Acts as a porin with low permeability that
+                     allows slow penetration of small solutes"
+                     /note="OmpA cluster 6 representative"
+                     /note="Original strain ID: GCF_012371575"
+                     /note="Cluster size: 2 sequences"
+                     /note="Cluster frequency: 0.37%"
+                     /note="This protein belongs to the outer membrane OOP (TC
+                     1.B.6) superfamily, OmpA family"
+ORIGIN
+        1 ttaagcctgt ggctgggtca caacgtcttt gatgccttta acctgaatct ctacgcaacg
+       61 gtctggcgcc aggcagtcga tcagggcttt acggcctttc acgctgtcac aggtgttgcc
+      121 agtaacaggg ttagatttac cctcgccacg tgcagagatc ttgttagaag ggatgccttt
+      181 agagacgagg tagtccacta cagactgagc acgtttctca gacagtttct ggttgtactg
+      241 ctctgaaccg atacggtcag tgtagcccag tacaacaaca gaaccatctt taggatccag
+      301 attgctcaac tgagtataca gctgatccag agcctgctga ccttctggtt tcagagtaga
+      361 tttgttgaaa gtgaacagca cgtcagactt cagggtgaaa cgcttggttt ctacaactgg
+      421 agccggagct ggcgctggag caacaactgg cgctgcttca tcctggccga aacggtagga
+      481 aacaccaacg ctcagcatag agttgtcagg acgcgcacca acggtacctg catcaccaat
+      541 gttgttaacc cactggtagt ccagacgggt tgcccagttt ttggtcactg catattcaac
+      601 accaacggct gccagtggag aaacaccggt atcgtggttg ctgatgcgac cataggttgg
+      661 gttagtctga gttgcgtcag cgcgccatac cataccaccc agacgggtgt acacgtccag
+      721 atcgtcagct attgggtagc ttaacttggc tgccatctga atgccctgag ctttgaaggc
+      781 accgttggtg acgtcgcctt tgttaggcat acggcccagc cagtcatagc ccagctcgaa
+      841 accaaggtac tggttagcct gatagccaag gaatgcacca gcacccagtt ggctttcgtg
+      901 agttgggcca tcgttgtttt cgtaaccgtt accgtagtaa ccagtatcat ggtactgaga
+      961 ccagcccagc ttaccaccgg tgtaccaggt gtcatcttta ggggcggcct gcgctacggt
+     1021 agcgaagcca gccagtgcca ctgcaattgc gatagctgtc tttttcat
+//

@@ -31,13 +31,22 @@ def setup_logging():
             logger.setLevel(logging.INFO)
 
 
-def generate_paths(input_path: Path, species_finder_path: Path) -> dict:
+def generate_paths(input_path: Path, species_finder_path: Path, output_name: str = None) -> dict:
     results_dir = species_finder_path / 'results'
+    
+    # If output_name is provided, use it instead of input_path filename without extension
+    if output_name:
+        file_name = output_name
+    else:
+        # Get the filename without the very last extension only
+        filename = input_path.name
+        file_name = filename.rsplit('.', 1)[0] if '.' in filename else filename
+    
     return {
         "results_dir": results_dir,
         "output_stats_path": results_dir / 'stats' / 'stats_results.csv',
         "ani_tab_file": results_dir / 'ani_tab' / 'ani_results.tab',
-        "species_output_file": species_finder_path / f"{input_path.stem}.csv"
+        "species_output_file": species_finder_path / f"{file_name}.csv"
     }
 
 
@@ -66,17 +75,21 @@ def remove_empty_directories(paths: dict):
 
 
 def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_path: Path,
-                                   threshold_species: float = 0.95, skip_species_assignment: bool = False):
+                                   threshold_species: float = 0.95, skip_species_assignment: bool = False,
+                                   output_name: str = None):
     setup_logging()
     logger.info(f"[Species Analysis] Starting analysis for {single_sequence_path}")
     logger.info(f"[Species Analysis] Skip assignment: {skip_species_assignment}")
+    if output_name:
+        logger.info(f"[Species Analysis] Using custom output name: {output_name}")
 
     input_path = Path(single_sequence_path).resolve()
     species_finder_path = Path(species_finder_path).resolve()
     logger.info(f"[Species Analysis] Input path resolved to: {input_path}")
     logger.info(f"[Species Analysis] Species finder path resolved to: {species_finder_path}")
 
-    paths = generate_paths(input_path, species_finder_path)
+    # Use custom output name if provided
+    paths = generate_paths(input_path, species_finder_path, output_name)
     logger.info(f"[Species Analysis] Generated paths: {paths}")
 
     try:
@@ -87,10 +100,18 @@ def new_run_species_metrics_finder(single_sequence_path: Path, species_finder_pa
         df_stats = pd.DataFrame([stats])
 
         # Create a directory for the genome in the species finder folder
-        genome_dir = species_finder_path / input_path.stem
+        # Use the output_name if provided, otherwise clean the input path stem
+        if output_name:
+            dir_name = output_name
+        else:
+            # Use the full filename without just the final extension
+            dir_name = input_path.name
+            dir_name = os.path.splitext(dir_name)[0]
+        
+        genome_dir = species_finder_path / dir_name
         genome_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(input_path, genome_dir / input_path.name)
-        logger.info(f"[Species Analysis] Created and copied to {genome_dir}")
+        logger.info(f"[Species Analysis] Created and copied to {genome_dir} (using name: {dir_name})")
 
         if skip_species_assignment:
             logger.info(f"[Species Analysis] Species assignment skipped for {input_path.stem}")

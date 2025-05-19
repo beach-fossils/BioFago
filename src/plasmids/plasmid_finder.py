@@ -4,6 +4,12 @@ from typing import List, Dict
 from Bio import SeqIO
 import logging
 import pandas as pd
+import os
+import sys
+
+# Import quiet mode module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from quiet_mode import QUIET_MODE
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -60,16 +66,25 @@ class PlasmidFinder:
                 '-dbtype', 'nucl',
                 '-out', str(self.blast_db_name)
             ]
-            subprocess.run(make_db_cmd, check=True, capture_output=True, text=True)
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(make_db_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(make_db_cmd, check=True, capture_output=True, text=True)
             logger.info(f"BLAST database created at {self.blast_db_name}")
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error in creating BLAST database: {e.stderr}")
+            logger.error(f"Error in creating BLAST database: {e.stderr if hasattr(e, 'stderr') else 'N/A'}")
             raise
 
     def run_blast_for_genome(self, genome_file: Path) -> List[str]:
         """Run BLAST for the genome file against the combined plasmid database."""
         self.genome_file = genome_file
-        self.output_folder = genome_file.parent.parent / "plasmid_finder" / self.genome_file.stem
+        
+        # Get full filename without extension
+        filename = genome_file.name
+        genome_name = filename.rsplit('.', 1)[0] if '.' in filename else filename
+        
+        self.output_folder = genome_file.parent.parent / "plasmid_finder" / genome_name
         self.output_folder.mkdir(parents=True, exist_ok=True)
         self.db_folder = self.output_folder / "db"
         self.db_folder.mkdir(exist_ok=True)
@@ -83,7 +98,11 @@ class PlasmidFinder:
             self.combine_plasmid_sequences()
             self.create_blast_db()
 
-            result_file = self.results_folder / f"{self.genome_file.stem}_blast_results.csv"
+            # Get full filename without extension
+            filename = self.genome_file.name
+            genome_name = filename.rsplit('.', 1)[0] if '.' in filename else filename
+            
+            result_file = self.results_folder / f"{genome_name}_blast_results.csv"
             blast_cmd = [
                 'blastn',
                 '-query', str(self.genome_file),
@@ -95,7 +114,11 @@ class PlasmidFinder:
             ]
 
             logger.info(f"Running BLAST command: {' '.join(blast_cmd)}")
-            subprocess.run(blast_cmd, check=True, capture_output=True, text=True)
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(blast_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(blast_cmd, check=True, capture_output=True, text=True)
             logger.info(f"BLAST search completed for {self.genome_file} with results saved to {result_file}")
 
             self._parse_results(result_file)
@@ -174,7 +197,9 @@ class PlasmidFinder:
                 })
 
             # Write processed results to a new file
-            processed_result_file = self.results_folder / f"{self.genome_file.stem}_blast_processed_results.csv"
+            filename = self.genome_file.name
+            genome_name = filename.rsplit('.', 1)[0] if '.' in filename else filename
+            processed_result_file = self.results_folder / f"{genome_name}_blast_processed_results.csv"
             df_results = pd.DataFrame(self.results)
             df_results.to_csv(processed_result_file, index=False)
 
@@ -189,7 +214,9 @@ class PlasmidFinder:
     def _extract_present_plasmids(self) -> None:
         """Extract the list of present plasmids and remove the 'sequence_' prefix."""
         try:
-            processed_result_file = self.results_folder / f"{self.genome_file.stem}_blast_processed_results.csv"
+            filename = self.genome_file.name
+            genome_name = filename.rsplit('.', 1)[0] if '.' in filename else filename
+            processed_result_file = self.results_folder / f"{genome_name}_blast_processed_results.csv"
             df_results = pd.read_csv(processed_result_file)
             present_df = df_results[df_results['present'] == 'Yes']
             self.present_plasmids = present_df['plasmid'].str.replace('sequence_', '').tolist()

@@ -84,8 +84,19 @@ class FastaStatistics:
     def generate_assembly_statistics(self) -> dict:
         """Generates a dictionary with assembly statistics."""
         largest_contig_length, largest_contig_name = self.largest_contig
+        
+        # We need to preserve the full filename except for the very last extension
+        # This is critical for files like GCF_002732285.1_GCF_002732285.1_ASM273228v1_genomic.fna
+        # where all components need to be preserved
+        filename = self.file_path.name
+        name_without_ext = filename.rsplit('.', 1)[0] if '.' in filename else filename
+        
+        # Add extra logging to debug filename issues
+        logging.debug(f"Original filename: {self.file_path}")
+        logging.debug(f"Name without extension: {name_without_ext}")
+        
         return {
-            'name': self.file_path.stem,
+            'name': name_without_ext,
             'contig_count': self.number_of_contigs,
             'N50_value': self.n50,
             'largest_contig': largest_contig_name,

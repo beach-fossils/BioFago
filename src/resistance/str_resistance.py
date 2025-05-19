@@ -6,8 +6,13 @@ import pandas as pd
 from typing import List, Dict
 import tempfile
 import os
+import sys
 from utils.get_prokka_faa_file import get_prokka_faa_file
 from utils.prokka_docker import run_prokka_docker
+
+# Import quiet mode module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from quiet_mode import QUIET_MODE
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -59,7 +64,13 @@ class StrResistance:
                 '-dbtype', 'nucl',
                 '-out', str(blast_db_name)
             ]
-            subprocess.run(make_db_cmd, check=True)
+            
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(make_db_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(make_db_cmd, check=True)
+                
             logger.info(f"BLAST database created at {blast_db_name}")
             return blast_db_name
         except subprocess.CalledProcessError as e:
@@ -97,7 +108,13 @@ class StrResistance:
                 ]
 
                 logger.info(f"Running BLAST command: {' '.join(blast_cmd)}")
-                subprocess.run(blast_cmd, check=True)
+                
+                if QUIET_MODE:
+                    with open(os.devnull, 'w') as devnull:
+                        subprocess.run(blast_cmd, check=True, stdout=devnull, stderr=devnull)
+                else:
+                    subprocess.run(blast_cmd, check=True)
+                    
                 logger.info(f"BLAST search completed for {self.genome_file} with results saved to {result_file}")
 
                 # Parse results
