@@ -3,19 +3,32 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import List, Dict, Optional
 import multiprocessing
 from functools import partial
 import argparse
-import logging
-import pandas as pd
+# Silence warnings first
+import warnings
+warnings.filterwarnings("ignore")
 
-# Add project root and src to sys.path FIRST
+# Add project root and src to sys.path before importing our modules
 project_root = Path(__file__).resolve().parent
 src_path = project_root / 'src'
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(src_path))
+
+# Import quiet_mode early to handle all console output suppression
+from src.quiet_mode import QUIET_MODE, ORIGINAL_STDOUT, ORIGINAL_STDERR, NULL_OUTPUT
+
+# Import logging AFTER output redirection
+import logging
+import pandas as pd
+import tqdm
+import io
+import contextlib
+import importlib
 
 
 from src.assigning_types.assembly_statistics import FastaStatistics
@@ -39,29 +52,116 @@ from src.resistance.levan_synthesis import (
 matrix_path = os.path.join(project_root, 'reference_crispr', 'clades_groups_correlation.csv')
 
 
-def setup_logging(log_file: Path, log_level: str) -> None:
-    """Set up logging configuration."""
-    # Remove any existing handlers
+# Define a global guard that will detect quiet mode
+QUIET_MODE = False
+
+# Create a global null handler for all loggers when in quiet mode
+class QuietHandler(logging.Handler):
+    """A handler that does nothing in quiet mode, logs to file in normal mode."""
+    def __init__(self, log_file, level=logging.INFO):
+        super().__init__(level)
+        self.log_file = log_file
+        self.file_handler = None
+        self.setup_file_handler()
+        
+    def setup_file_handler(self):
+        """Set up a file handler for logging to file."""
+        self.file_handler = logging.FileHandler(self.log_file)
+        self.file_handler.setLevel(self.level)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self.file_handler.setFormatter(formatter)
+        
+    def emit(self, record):
+        """Only emit records to file, never to console in quiet mode."""
+        # Always emit to file
+        if self.file_handler:
+            self.file_handler.emit(record)
+
+# Store original stdout and stderr for restoration
+ORIGINAL_STDOUT = sys.stdout
+ORIGINAL_STDERR = sys.stderr
+
+def setup_logging(log_file: Path, log_level: str, quiet: bool = False) -> None:
+    """Set up logging configuration with complete suppression in quiet mode.
+    
+    Args:
+        log_file: Path to the log file
+        log_level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        quiet: If True, suppress ALL console output except for progress bars
+    """
+    global QUIET_MODE
+    
+    # IMPORTANT: This is already set by quiet_mode.py, but we keep this for clarity
+    QUIET_MODE = quiet
+    
+    # Get numeric log level
+    numeric_level = getattr(logging, log_level.upper())
+    
+    # Reset the root logger (required to avoid duplicate handlers)
     root_logger = logging.getLogger()
-    for handler in root_logger.handlers[:]:
-        root_logger.removeHandler(handler)
-
-    # Set up basic configuration
-    logging.basicConfig(
-        filename=log_file,
-        level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-
-    # Add console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(formatter)
-    root_logger.addHandler(console_handler)
-
-    # Log startup info
-    logging.info("Logging initialized")
+    
+    # Remove all existing handlers before attaching new ones
+    for hdlr in root_logger.handlers[:]:
+        hdlr.close()
+        root_logger.removeHandler(hdlr)
+    
+    # Always set up file logging regardless of quiet mode
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(numeric_level)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    
+    # Set up the root logger with file handler
+    root_logger.setLevel(numeric_level)
+    root_logger.addHandler(file_handler)
+    
+    # In quiet mode, we don't add any console handlers
+    if not quiet:
+        # Add console handler for non-quiet mode
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_formatter = logging.Formatter('%(levelname)s: %(message)s')
+        console_handler.setFormatter(console_formatter)
+        root_logger.addHandler(console_handler)
+        
+    # Monkey-patch subprocesses by redirecting their output in quiet mode
+    if quiet:
+        # Define a null handler for all loggers
+        null_handler = logging.NullHandler()
+        
+        # Override all module loggers to use NullHandler for console output
+        for logger_name in logging.root.manager.loggerDict:
+            module_logger = logging.getLogger(logger_name)
+            # Remove all console handlers
+            for hdlr in module_logger.handlers[:]:
+                if isinstance(hdlr, logging.StreamHandler) and not isinstance(hdlr, logging.FileHandler):
+                    module_logger.removeHandler(hdlr)
+            # Add the null handler
+            module_logger.addHandler(null_handler)
+            # Ensure propagation to the root logger (with file handler)
+            module_logger.propagate = True
+        
+        # More aggressive monkey-patching of subprocess.run to ensure ALL output is suppressed
+        original_run = subprocess.run
+        def quiet_run(*args, **kwargs):
+            # Handle the case when capture_output is used
+            if kwargs.get('capture_output'):
+                # Don't modify stdout/stderr if capture_output is True
+                pass
+            else:
+                # Set stdout/stderr to PIPE only if capture_output is not used
+                kwargs['stdout'] = kwargs.get('stdout', subprocess.PIPE)
+                kwargs['stderr'] = kwargs.get('stderr', subprocess.PIPE)
+            return original_run(*args, **kwargs)
+        
+        # Apply the monkey patch
+        subprocess.run = quiet_run
+        
+        # Log that we're in quiet mode (to file only)
+        logging.info("Logging initialized in quiet mode (console output suppressed)")
+    else:
+        # Log that we're in standard mode (to console and file)
+        logging.info("Logging initialized in standard mode")
 
 
 def create_temp_dir():
@@ -73,7 +173,12 @@ def create_temp_dir():
 def check_docker() -> bool:
     """Check if Docker is running and accessible."""
     try:
-        subprocess.run(["docker", "info"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Use /dev/null for output redirection in quiet mode
+        if QUIET_MODE:
+            with open(os.devnull, 'w') as devnull:
+                subprocess.run(["docker", "info"], check=True, stdout=devnull, stderr=devnull)
+        else:
+            subprocess.run(["docker", "info"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return True
     except subprocess.CalledProcessError:
         return False
@@ -82,8 +187,15 @@ def check_docker() -> bool:
 def check_blast_version() -> bool:
     """Check if BLAST is installed and get its version."""
     try:
-        result = subprocess.run(['blastn', '-version'], capture_output=True, text=True, check=True)
-        version = result.stdout.strip()
+        # Use /dev/null for output redirection instead of capture_output
+        if QUIET_MODE:
+            with open(os.devnull, 'w') as devnull:
+                result = subprocess.run(['blastn', '-version'], stdout=devnull, stderr=devnull, check=True)
+            version = "BLAST is installed (output suppressed in quiet mode)"
+        else:
+            result = subprocess.run(['blastn', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            version = result.stdout.strip()
+            
         logging.info(f"BLAST version: {version}")
         return True
     except subprocess.CalledProcessError as e:
@@ -106,11 +218,18 @@ def is_fasta(file_path: Path) -> bool:
 
 
 def clean_fasta_name(file_path: Path) -> Path:
-    """Clean up FASTA file name, ensuring it has a .fasta extension."""
+    """Clean up FASTA file name, ensuring it has a .fasta extension.
+    
+    Simply removes the last extension and replaces with .fasta,
+    preserving the full filename regardless of its format.
+    """
     path = Path(file_path)
-    while path.suffix.lower() in ['.fasta', '.fa', '.fna']:
-        path = path.with_suffix('')
-    return path.with_suffix('.fasta')
+    
+    # Only remove the last extension (suffix) and replace with .fasta
+    # This preserves all parts of complex filenames without any special handling
+    # Example: any_genome_name.fna -> any_genome_name.fasta
+    base_name = path.stem  # Gets name without last extension
+    return path.with_name(f"{base_name}.fasta")
 
 
 def copy_fasta_files(input_path: Path, temp_genomes_folder: Path) -> List[Path]:
@@ -143,16 +262,22 @@ def copy_fasta_files(input_path: Path, temp_genomes_folder: Path) -> List[Path]:
 
     # Copy files to subdirectories
     for fasta_file in fasta_files:
+        # Get the base name without just the last extension
+        # This is important for GCF_ files with complex names
+        file_basename = os.path.splitext(fasta_file.name)[0]
+        
         # Create a subdirectory with the same name as the file (without extension)
-        subdir_name = fasta_file.stem
+        subdir_name = file_basename
         subdir_path = temp_genomes_folder / subdir_name
         subdir_path.mkdir(exist_ok=True)
+        
+        logging.info(f"Created subdirectory {subdir_path} for file {fasta_file.name}")
 
         # Copy the file to its subdirectory
         dest_file = clean_fasta_name(subdir_path / fasta_file.name)
         try:
             shutil.copy2(fasta_file, dest_file)
-            logging.info(f"Copied and renamed {fasta_file} to {dest_file}")
+            logging.info(f"Copied {fasta_file.name} to {dest_file.parent.name}/{dest_file.name}")
             result_files.append(dest_file)
         except Exception as e:
             logging.error(f"Error copying {fasta_file} to {dest_file}: {e}")
@@ -172,7 +297,7 @@ def copy_fasta_files(input_path: Path, temp_genomes_folder: Path) -> List[Path]:
 
 def copy_types_folders(source_folder: Path, destination_folder: Path) -> None:
     """Copy type-specific folders to the destination."""
-    types_folders = ['types_capsule', 'types_cellulose', 'types_lps', 'types_srl']
+    types_folders = ['types_capsule', 'types_cellulose', 'types_lps', 'types_srl', 'types_ompa']
     for genome_folder in source_folder.iterdir():
         if genome_folder.is_dir():
             for types_folder in types_folders:
@@ -220,15 +345,44 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
     logging.info(f"Starting process_results with {len(results)} results")
     logging.info(f"Number of extract_annotate_results: {len(extract_annotate_results)}")
 
-    # Enhanced genome name mapping
+    # Enhanced genome name mapping - preserving full names without splitting
     genome_name_mapping = {}
     for result in results:
         if result and 'name' in result:
+            # Get the full name without any processing or splitting
             full_name = result['name']
-            short_name = full_name.split('.')[0]
-            genome_name_mapping[short_name] = full_name
-            genome_name_mapping[full_name] = full_name
-            logging.debug(f"Added genome name mapping: {short_name} -> {full_name}")
+            logging.info(f"Processing genome with name: {full_name}")
+            
+            # Only remove the final extension if present
+            if any(full_name.lower().endswith(ext) for ext in ['.fasta', '.fa', '.fna']):
+                full_name = os.path.splitext(full_name)[0]
+                
+            # Create additional mappings for shortened versions that might be used in other parts of the code
+            # These shortened versions should ONLY be used for lookups, never for final output
+            short_name_1 = full_name.split('.')[0]  # First part before any dot
+            
+            # Create a more specific mapping for cases like GCF_002732285.1_GCF_002732285.1_ASM273228v1_genomic
+            # where we need to match both the full name and the shortened GCF_* name
+            parts = full_name.split('_')
+            if len(parts) > 2 and parts[0] in ('GCF', 'GCA'):
+                # Create a mapping for GCF_number only (for lookup purposes)
+                gcf_prefix = '_'.join(parts[:2])  # e.g., GCF_002732285
+                genome_name_mapping[gcf_prefix] = full_name
+                logging.debug(f"Added GCF prefix mapping: {gcf_prefix} -> {full_name}")
+                
+                # Another common pattern is GCF_number.version_GCF_number
+                if len(parts) > 3 and '.' in parts[1] and parts[2] == parts[0]:
+                    gcf_with_version = f"{parts[0]}_{parts[1]}"  # e.g., GCF_002732285.1
+                    gcf_repeated = f"{gcf_with_version}_{parts[0]}_{parts[1]}"  # e.g., GCF_002732285.1_GCF_002732285.1
+                    genome_name_mapping[gcf_with_version] = full_name
+                    genome_name_mapping[gcf_repeated] = full_name
+                    logging.debug(f"Added GCF version mapping: {gcf_with_version} -> {full_name}")
+                    logging.debug(f"Added GCF repeated mapping: {gcf_repeated} -> {full_name}")
+            
+            # Add the main mappings
+            genome_name_mapping[short_name_1] = full_name  # For lookups only
+            genome_name_mapping[full_name] = full_name     # Keep original full name unchanged
+            logging.debug(f"Added genome name mappings: {short_name_1} -> {full_name}, {full_name} -> {full_name}")
 
     for result in results:
         if not result:
@@ -274,7 +428,8 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
                 'types_T3SS_II': 't3ss_ii_locus',
                 'types_T6SS_I': 't6ss_i_locus',
                 'types_T6SS_II': 't6ss_ii_locus',
-                'types_flag3': 'flag3_locus'
+                'types_flag3': 'flag3_locus',
+                'types_ompa': 'ompa_locus'  # Add ompA locus type
             }
 
             # Initialize all locus fields with default value
@@ -301,17 +456,29 @@ def process_results(results: List[Dict], species_finder_path: Path, extract_anno
                             ref_type in locus_types):
 
                         locus_key = locus_types[ref_type]
-                        formatted_type = f"({final_type})"
-                        if type_locus and type_locus.strip():
-                            formatted_type = f"{type_locus} {formatted_type}"
+                        
+                        # Special handling for ompA which uses a different format
+                        if ref_type == 'types_ompa':
+                            # For ompA, final_type_info already contains the formatted string
+                            if final_type_info:
+                                formatted_output = final_type_info
+                            else:
+                                formatted_output = f"({final_type})"
+                            processed_result[locus_key] = formatted_output
+                            logging.info(f"Added ompA information for {genome_name}: {formatted_output}")
+                        else:
+                            # Regular loci formatting
+                            formatted_output = f"({final_type})"
+                            if type_locus and type_locus.strip():
+                                formatted_output = f"{type_locus} {formatted_output}"
 
-                        if flagged_genes:
-                            if isinstance(flagged_genes, list):
-                                flagged_genes = ', '.join(flagged_genes)
-                            formatted_type += f" - Flagged genes: {flagged_genes}"
+                            if flagged_genes:
+                                if isinstance(flagged_genes, list):
+                                    flagged_genes = ', '.join(flagged_genes)
+                                formatted_output += f" - Flagged genes: {flagged_genes}"
 
-                        processed_result[locus_key] = formatted_type.strip()
-                        logging.info(f"Added {ref_type} information for {genome_name}: {formatted_type}")
+                            processed_result[locus_key] = formatted_output.strip()
+                        logging.info(f"Added {ref_type} information for {genome_name}: {formatted_output}")
 
             final_results.append(processed_result)
             logging.info(f"Successfully processed genome {genome_name} with {len(locus_types)} locus types")
@@ -360,12 +527,58 @@ def clean_crispr_info(result: Dict) -> None:
 
 def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, threshold_species: float,
                                  keep_sequence_loci: bool, clade_classifier: CRISPRCladeClassifier,
-                                 skip_species_assignment: bool = False) -> None:
+                                 skip_species_assignment: bool = False, batch_size: int = 0,
+                                 num_workers: int = 4, docker_limit: int = 4, quiet: bool = False) -> None:
     try:
         logging.info("========= Starting Species and Types Analysis =========")
         logging.info(f"Skip species assignment: {skip_species_assignment}")
         logging.info(f"Genomes folder: {genomes_folder}")
         logging.info(f"Output directory: {output_dir}")
+        
+        # Create progress bar
+        # Simplified context manager for progress bars - no longer needs special handling
+        # since we're not redirecting stdout/stderr globally
+        @contextlib.contextmanager
+        def temporary_stdout(capture_to_log=False):
+            """Simple pass-through context manager for progress bars and messages"""
+            try:
+                yield
+            finally:
+                # Ensure output is flushed immediately
+                sys.stdout.flush()
+                sys.stderr.flush()
+                
+        def create_progress_bar(total, desc="Processing", color="green"):
+            """Create a colorful progress bar appropriate for the current mode.
+            
+            Args:
+                total: Total number of items
+                desc: Description text
+                color: Color of the progress bar ('green', 'blue', 'cyan', etc.)
+            """
+            # Color formatting using ANSI escape codes
+            colors = {
+                'green': '\033[92m',
+                'blue': '\033[94m',
+                'cyan': '\033[96m',
+                'magenta': '\033[95m',
+                'yellow': '\033[93m',
+                'white': '\033[97m',
+                'reset': '\033[0m'
+            }
+            
+            selected_color = colors.get(color, colors['green'])
+            
+            # Use the temporary_stdout context to ensure progress bars show in quiet mode
+            with temporary_stdout():
+                return tqdm.tqdm(
+                    total=total,
+                    desc=f"{selected_color}{desc}{colors['reset']}",
+                    ncols=80,
+                    bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]',
+                    # Use stderr to avoid interference with logging 
+                    file=sys.stderr
+                )
 
         # Check if reference directory exists
         if not REFERENCE_LEVAN.exists():
@@ -381,21 +594,26 @@ def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, thresho
         species_finder_path = create_species_finder_folder(output_dir)
         logging.info(f"Created species finder directory at: {species_finder_path}")
 
-        # Get and validate genome files with detailed logging
+        # Get and validate genome files
+        with temporary_stdout():
+            print("Collecting genome files...")
+        
         logging.info("Collecting genome files...")
         genome_files = []
+        
+        # Just collect all FASTA files without detailed logging of each one
         for fasta_file in genomes_folder.glob('*.fasta'):
             if fasta_file.is_file():
                 genome_files.append(fasta_file)
-                logging.info(f"Found root FASTA file: {fasta_file}")
+                logging.debug(f"Found root FASTA file: {fasta_file}")
 
         for subdir in genomes_folder.iterdir():
             if subdir.is_dir():
-                logging.info(f"Checking subdirectory: {subdir}")
+                logging.debug(f"Checking subdirectory: {subdir}")
                 for fasta_file in subdir.glob('*.fasta'):
                     if fasta_file.is_file():
                         genome_files.append(fasta_file)
-                        logging.info(f"Found FASTA file in subdirectory: {fasta_file}")
+                        logging.debug(f"Found FASTA file in subdirectory: {fasta_file}")
 
         if not genome_files:
             logging.error(f"Directory contents of {genomes_folder}:")
@@ -403,12 +621,67 @@ def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, thresho
                 logging.error(f"  {item}")
             raise ValueError(f"No FASTA files found in {genomes_folder} or its subdirectories")
 
+        # Display overall progress using progress stages
+        total_stages = 4
+        stage = 0
+        
+        with temporary_stdout():
+            print(f"\n✺ Found {len(genome_files)} genome files to analyze")
+            print(f"✺ Starting analysis with {num_workers} worker processes...")
+            overall_progress = create_progress_bar(total_stages, "Overall Progress", color="cyan")
+
         # Step 1: Process genomes first to get clade classifications
+        stage += 1
+        with temporary_stdout():
+            overall_progress.update(1)
+            print(f"Stage {stage}/{total_stages}: Processing genomes for clade classification...")
+            
         logging.info("Starting genome processing with classifier...")
-        all_results = process_genomes(genome_files, clade_classifier)
+        logging.info(f"Using batch_size={batch_size}, num_workers={num_workers}")
+        
+        # Create a progress bar for genome processing
+        genome_progress = create_progress_bar(len(genome_files), "Genome Processing", color="green")
+        
+        # Custom wrapper to track progress while processing genomes
+        def track_genome_progress(genome_files, clade_classifier, max_workers, batch_size):
+            results = []
+            
+            # If batch size is set, process in batches
+            if batch_size > 0 and batch_size < len(genome_files):
+                for i in range(0, len(genome_files), batch_size):
+                    batch = genome_files[i:i+batch_size]
+                    batch_results = process_genomes(batch, clade_classifier, max_workers=max_workers, batch_size=0)
+                    results.extend(batch_results)
+                    genome_progress.update(len(batch))
+            else:
+                # Otherwise process all at once with custom tracking
+                with multiprocessing.Pool(processes=max_workers) as pool:
+                    for result in pool.imap_unordered(
+                        process_genome_with_classifier, 
+                        [(g, clade_classifier) for g in genome_files]
+                    ):
+                        if result:
+                            results.append(result)
+                        genome_progress.update(1)
+            
+            return results
+            
+        all_results = track_genome_progress(
+            genome_files, 
+            clade_classifier, 
+            max_workers=num_workers, 
+            batch_size=batch_size
+        )
+        
+        genome_progress.close()
         logging.info(f"Completed genome processing. Got {len(all_results)} results")
 
-        # Step 2: Run species metrics analysis with detailed logging
+        # Step 2: Run species metrics analysis
+        stage += 1
+        with temporary_stdout():
+            overall_progress.update(1)
+            print(f"Stage {stage}/{total_stages}: Running species metrics analysis...")
+            
         logging.info("========= Starting Species Metrics Analysis =========")
 
         # Check reference genome directory
@@ -436,12 +709,26 @@ def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, thresho
             logging.exception("Species metrics exception details:")
             raise
 
-
-        # Step 3: Run type analysis
-        extract_annotate_results = extract_annotate_assign(genomes_folder)
+        # Step 3: Run type analysis with parallelization
+        stage += 1
+        with temporary_stdout():
+            overall_progress.update(1)
+            print(f"Stage {stage}/{total_stages}: Running typing analysis...")
+            
+        logging.info(f"Starting type analysis with batch_size={batch_size}, num_workers={num_workers}, docker_limit={docker_limit}")
+        extract_annotate_results = extract_annotate_assign(
+            genomes_folder, 
+            batch_size=batch_size, 
+            num_workers=num_workers, 
+            docker_limit=docker_limit
+        )
         logging.info(f"Obtained {len(extract_annotate_results)} annotation results")
 
         # Step 4: Run levan analysis for each genome
+        with temporary_stdout():
+            print("Running levan synthesis analysis...")
+            levan_progress = create_progress_bar(len(genome_files), "Levan Analysis", color="magenta")
+            
         logging.info("Starting levan synthesis analysis")
         for genome_file in genome_files:
             logging.info(f"Full path for genome file: {genome_file}")
@@ -469,8 +756,20 @@ def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, thresho
                     if result['name'] == genome_file.stem:
                         result['levan_synthesis'] = f"Analysis failed: {str(e)}"
                         break
+                        
+            with temporary_stdout():
+                levan_progress.update(1)
+                
+        with temporary_stdout():
+            levan_progress.close()
 
-        # Step 5: Process final results just once, after all analyses are complete
+        # Step 5: Process final results
+        stage += 1
+        with temporary_stdout():
+            overall_progress.update(1)
+            print(f"Stage {stage}/{total_stages}: Processing final results...")
+            
+        # Process final results just once, after all analyses are complete
         final_results = process_results(all_results, species_finder_path, extract_annotate_results, clade_classifier)
 
         if final_results:
@@ -482,6 +781,10 @@ def run_species_and_types_finder(genomes_folder: Path, output_dir: Path, thresho
             keep_loci_files(output_dir)
         else:
             cleanup_analysis_folders(output_dir, keep_sequence_loci)
+            
+        with temporary_stdout():
+            overall_progress.close()
+            print(f"Analysis completed successfully. Results saved to {output_dir}")
 
     except Exception as e:
         logging.error(f"Error in run_species_and_types_finder: {str(e)}")
@@ -504,19 +807,41 @@ def copy_final_results(temp_dir: Path, output_dir: Path, keep_sequence_loci: boo
             logging.warning("all_results.csv not found in temporary directory")
 
     if keep_sequence_loci:
+        # Copy types_finder folder
         types_finder_src = temp_dir / 'types_finder'
         if types_finder_src.exists():
             shutil.copytree(types_finder_src, output_dir / 'types_finder', dirs_exist_ok=True)
             logging.info(f"Copied types_finder folder to {output_dir / 'types_finder'}")
         else:
             logging.warning(f"types_finder folder not found in {temp_dir}")
+            
+        # Check for genome-specific types_ompa folders that might not be in types_finder
+        for genome_dir in temp_dir.glob('*'):
+            if genome_dir.is_dir() and genome_dir.name != 'types_finder' and genome_dir.name != 'species_finder':
+                ompa_dir = genome_dir / 'types_ompa'
+                if ompa_dir.exists():
+                    dest_dir = output_dir / 'types_finder' / genome_dir.name / 'types_ompa'
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    # Only copy .gbk and .fna files as requested
+                    files_to_copy = []
+                    # Check for GenBank files
+                    files_to_copy.extend(ompa_dir.glob('*.gbk'))
+                    # Check for FASTA files
+                    files_to_copy.extend(ompa_dir.glob('*.fasta'))
+                    files_to_copy.extend(ompa_dir.glob('*.fna'))
+                    
+                    for file in files_to_copy:
+                        if file.is_file():
+                            shutil.copy2(file, dest_dir)
+                            logging.info(f"Copied ompa file from alternate location: {file} to {dest_dir}")
 
     for file in temp_dir.glob('*.log'):
         shutil.copy2(file, output_dir)
 
     logging.info(f"Copied final results to {output_dir}")
     logging.info(f"Final contents of output directory: {list(output_dir.glob('*'))}")
-
+    
+    # Log contents of types_finder to help with debugging
     types_finder_output = output_dir / 'types_finder'
     if types_finder_output.exists():
         logging.info("Contents of types_finder folder:")
@@ -539,8 +864,72 @@ def galaxy_runner():
     parser.add_argument('--log_level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                       help='Logging level')
     parser.add_argument('--output_dir', required=True, help='Output directory')
-
+    parser.add_argument('--batch_size', type=int, default=0, 
+                      help='Number of genomes to process in parallel (0 = process all at once)')
+    parser.add_argument('--num_workers', type=int, default=4,
+                      help='Number of worker processes for parallelization')
+    parser.add_argument('--docker_limit', type=int, default=4,
+                      help='Maximum number of concurrent Docker containers')
+    parser.add_argument('--quiet', action='store_true', 
+                      help='Reduce console output and show only progress bars and essential messages')
+    
+    # Note: We already handled early patching at the very start of the script
+    # so no need to do it again here
+    
     args = parser.parse_args()
+    
+    # Record start time for analysis
+    start_time = time.time()
+    
+    # Create a simplified context manager for printing
+    @contextlib.contextmanager
+    def safe_print():
+        """Simple context manager to ensure output is visible"""
+        try:
+            yield
+        finally:
+            # Make sure output is flushed immediately
+            sys.stdout.flush()
+            sys.stderr.flush()
+    
+    # Determine terminal capabilities for colored output
+    def supports_color():
+        """Check if the terminal supports color."""
+        plat = sys.platform
+        supported_platform = plat != 'win32' or 'ANSICON' in os.environ
+        is_a_tty = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
+        return supported_platform and is_a_tty
+    
+    # Only use colors if the terminal supports them
+    use_colors = supports_color()
+    
+    # ANSI color codes
+    if use_colors:
+        blue = '\033[94m'
+        green = '\033[92m'
+        cyan = '\033[96m'
+        magenta = '\033[95m'
+        yellow = '\033[93m'
+        white = '\033[97m'
+        reset = '\033[0m'
+        bold = '\033[1m'
+    else:
+        # No colors if not supported
+        blue = green = cyan = magenta = yellow = white = reset = bold = ''
+    
+    # Show a nice banner (always shown even in quiet mode)
+    with safe_print():
+        banner = f"""
+{blue}{bold}╔═══════════════════════════════════════════════════════╗{reset}
+{blue}{bold}║                  {white}ErwinATyper v2.0{white}                     ║{reset}
+{blue}{bold}║         Comprehensive Erwinia Genome Analysis         ║{reset}
+{blue}{bold}╚═══════════════════════════════════════════════════════╝{reset}
+
+{cyan}✪ Processing input:{reset} {args.input}
+{cyan}✪ Output directory:{reset} {args.output_dir}
+{cyan}✪ Quiet mode:{reset} {"Enabled" if args.quiet else "Disabled"}
+"""
+        print(banner)
 
     try:
         input_path = Path(args.input).resolve()
@@ -548,7 +937,7 @@ def galaxy_runner():
         output_dir.mkdir(parents=True, exist_ok=True)
         log_file = output_dir / "process.log"
 
-        setup_logging(log_file, args.log_level)
+        setup_logging(log_file, args.log_level, args.quiet)
 
         logging.info(f"Input path: {input_path}")
         logging.info(f"Input path exists: {input_path.exists()}")
@@ -598,13 +987,19 @@ def galaxy_runner():
                     threshold_species=args.threshold_species,
                     keep_sequence_loci=args.keep_sequence_loci,
                     clade_classifier=clade_classifier,
-                    skip_species_assignment=args.skip_species_assignment
+                    skip_species_assignment=args.skip_species_assignment,
+                    batch_size=args.batch_size,
+                    num_workers=args.num_workers,
+                    docker_limit=args.docker_limit,
+                    quiet=args.quiet
                 )
             except Exception as e:
                 logging.error(f"Error in run_species_and_types_finder: {str(e)}")
                 logging.exception("Exception details:")
                 sys.exit(1)
 
+            with safe_print():
+                print("Finalizing results...")
             logging.info("Copying final results to output directory")
             try:
                 copy_final_results(temp_dir_path, output_dir, args.keep_sequence_loci)
@@ -624,6 +1019,35 @@ def galaxy_runner():
 
         logging.info(f"Final contents of output directory: {list(output_dir.glob('*'))}")
         logging.info("Analysis completed successfully.")
+        
+        # Always show the success message regardless of quiet mode
+        with safe_print():
+            # Print final success message with path to results
+            output_csv = output_dir / 'species_finder' / 'all_results.csv'
+            if output_csv.exists():
+                # Calculate elapsed time (best approximation)
+                elapsed_seconds = int(time.time() - start_time)
+                minutes, seconds = divmod(elapsed_seconds, 60)
+                hours, minutes = divmod(minutes, 60)
+                time_str = f"{hours}h {minutes}m {seconds}s" if hours > 0 else f"{minutes}m {seconds}s"
+                
+                # Count analyzed genomes 
+                genome_count = sum(1 for _ in Path(output_dir).glob('*/*/*.fasta'))
+                
+                # Create a fancy success message box
+                success_msg = f"""
+{green}{bold}╔═══════════════════════════════════════════════════════╗{reset}
+{green}{bold}║ ✬ Analysis completed successfully!                    ║{reset}
+{green}{bold}╚═══════════════════════════════════════════════════════╝{reset}
+
+{cyan}▸ Results file:{reset} {output_csv}
+{cyan}▸ Output directory:{reset} {output_dir}
+{cyan}▸ Time elapsed:{reset} {time_str}
+{cyan}▸ Genomes analyzed:{reset} {genome_count if genome_count > 0 else "All input genomes"}
+
+{yellow}To view results:{reset} Open the CSV file in your preferred spreadsheet application
+"""
+                print(success_msg)
 
 
     except Exception as e:

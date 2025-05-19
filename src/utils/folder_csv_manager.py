@@ -59,17 +59,29 @@ def run_species_metrics_for_all(genomes_folder_path: Path, species_finder_path: 
             species_finder_path.mkdir(parents=True, exist_ok=True)
             logger.info(f"Created species finder directory: {species_finder_path}")
 
+            # Get complete filename without extension
+            file_stem = genome_file.name
+            # Remove only the final extension
+            file_stem = os.path.splitext(file_stem)[0]
+            logger.info(f"Extracted full filename without extension: {file_stem}")
+            
+            # For debugging GCF/GCA special cases
+            if 'GCF_' in file_stem or 'GCA_' in file_stem:
+                parts = file_stem.split('_')
+                logger.info(f"GCF/GCA file detected. Parts: {len(parts)}, First parts: {parts[:3]}")
+                
             # Run metrics finder for this genome
-            logger.info(f"Running metrics finder for {genome_file.name}")
+            logger.info(f"Running metrics finder for {genome_file.name} (output name: {file_stem})")
             new_run_species_metrics_finder(
                 single_sequence_path=genome_file,
                 species_finder_path=species_finder_path,
                 threshold_species=threshold_species,
-                skip_species_assignment=skip_species_assignment
+                skip_species_assignment=skip_species_assignment,
+                output_name=file_stem  # Pass clean name without extension
             )
 
             # Verify results
-            output_file = species_finder_path / f"{genome_file.stem}.csv"
+            output_file = species_finder_path / f"{file_stem}.csv"
             if output_file.exists():
                 try:
                     df = pd.read_csv(output_file)
@@ -346,7 +358,8 @@ def final_enhance_csv(csv_path: str) -> None:
         'cellulose_locus': 'cellulose_type',
         'lps_locus': 'lps_type',
         'sorbitol_locus': 'sorbitol_type',
-        'flag3_locus': 'flag3_type'
+        'flag3_locus': 'flag3_type',
+        'ompa_locus': 'ompa_type'  # Add ompA locus to type renaming
     }
     df = df.rename(columns=rename_map)
 
@@ -387,6 +400,12 @@ def final_enhance_csv(csv_path: str) -> None:
         cols.remove('flag3_type')
         insert_idx = cols.index('flag_iv_locus') + 1
         cols.insert(insert_idx, 'flag3_type')
+        
+    # Move ompa_type after t6ss_ii_locus
+    if 'ompa_type' in cols and 't6ss_ii_locus' in cols:
+        cols.remove('ompa_type')
+        insert_idx = cols.index('t6ss_ii_locus') + 1
+        cols.insert(insert_idx, 'ompa_type')
 
     # Apply final column ordering
     df = df[cols]

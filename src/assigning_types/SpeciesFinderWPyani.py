@@ -115,17 +115,34 @@ class OptimizedLocalANIExecutor:
 
         # Clean up any existing output directory
         if self.output_dir.exists():
-            shutil.rmtree(self.output_dir)
+            try:
+                shutil.rmtree(self.output_dir)
+            except PermissionError:
+                logging.warning(f"Permission error cleaning up output directory: {self.output_dir}. Continuing anyway.")
+            except Exception as e:
+                logging.warning(f"Error cleaning up output directory: {e}. Continuing anyway.")
         time.sleep(1)
 
         base_dir = self.input_dir.parent.absolute()
         genome_folder_name = self.single_sequence_path.parent.name
 
+        # Get current user ID for Docker to use
+        try:
+            user_id = os.getuid()
+            group_id = os.getgid()
+        except AttributeError:
+            # Windows doesn't have getuid/getgid
+            user_id = 1000
+            group_id = 1000
+            logging.info("Running on Windows, using default user/group IDs")
+
         # Split the Docker command into a list of arguments
+        # Add user parameter to make files owned by the current user
         docker_command = [
             "docker", "run", "--rm",
             "--platform", "linux/amd64",
             "-v", f"{base_dir}:/host_dir:rw",
+            "--user", f"{user_id}:{group_id}",  # Run as current user
             "leightonpritchard/average_nucleotide_identity:v0.2.9",
             "-i", f"/host_dir/{genome_folder_name}",
             "-o", "/host_dir/output",
@@ -219,15 +236,39 @@ class OptimizedLocalANIExecutor:
             logging.error(f"Error processing {genome_file.name}: {e}")
             return False
         finally:
-            # Clean up
+            # Clean up with better error handling
             try:
                 input_file = self.input_dir / genome_file.name
                 if input_file.exists():
-                    input_file.unlink()
+                    try:
+                        input_file.unlink()
+                    except PermissionError:
+                        logging.warning(f"Permission error removing input file: {input_file}. Continuing execution.")
+                    except Exception as e:
+                        logging.warning(f"Error removing input file: {e}. Continuing execution.")
+                
                 if self.output_dir.exists():
-                    shutil.rmtree(self.output_dir)
+                    try:
+                        # Try to remove problematic file first if it exists
+                        nucmer_tar = self.output_dir / 'nucmer_output.tar.gz'
+                        if nucmer_tar.exists():
+                            try:
+                                # Try chmod first to ensure we can delete it
+                                os.chmod(nucmer_tar, 0o666)
+                                nucmer_tar.unlink()
+                                logging.info(f"Successfully removed problematic file: {nucmer_tar}")
+                            except Exception as e:
+                                logging.warning(f"Could not remove problematic file: {nucmer_tar}, {e}")
+                        
+                        # Now try to remove the directory
+                        shutil.rmtree(self.output_dir)
+                    except PermissionError:
+                        logging.warning(f"Permission error removing output directory: {self.output_dir}. Continuing execution.")
+                    except Exception as e:
+                        logging.warning(f"Error removing output directory: {e}. Continuing execution.")
             except Exception as e:
                 logging.error(f"Error during cleanup: {e}")
+                # Continue execution despite cleanup errors
 
     @staticmethod
     def _extract_species_from_filename(filename):
@@ -248,16 +289,30 @@ class NewSpeciesTabModifier:
                     if line.strip() == '':
                         out.write(line)
                         continue
-                    values = line.strip().split('\t')
-                    if len(values) < 2:
-                        logging.warning(f"Invalid line format: {line.strip()}. Skipping...")
+
+                    parts = line.strip().split('\t')
+                    if len(parts) < 2:
+                        out.write(line)
                         continue
-                    species = self._extract_species_from_filename(values[0])
-                    modified_line = f"{species}\t{values[0]}\t" + "\t".join(values[1:]) + "\n"
-                    out.write(modified_line)
+
+                    # Extract species names
+                    species1 = parts[0]
+                    species2 = parts[1]
+
+                    # Modify if needed
+                    modified_species1 = self._extract_species_from_filename(species1)
+                    modified_species2 = self._extract_species_from_filename(species2)
+
+                    # Replace parts and join
+                    parts[0] = modified_species1
+                    parts[1] = modified_species2
+                    out.write('\t'.join(parts) + '\n')
+                
             logging.info(f"Modified tab file saved to {output_file}")
-        except IOError as e:
+            return True
+        except Exception as e:
             logging.error(f"Error modifying tab file: {e}")
+            return False
 
     @staticmethod
     def _extract_species_from_filename(filename):
@@ -267,47 +322,36 @@ class NewSpeciesTabModifier:
         return f"{parts[0]} {parts[1]}" if len(parts) >= 2 else "Unknown"
 
     def check_species_above_threshold(self, tab_file, threshold=0.95):
-        best_match = {'species': 'Unknown', 'ani': 0.0}
-        input_genome = None
         try:
             with Path(tab_file).open('r') as f:
                 for line in f:
-                    if line.strip() == '' or line.startswith('Unknown'):
-                        continue
-                    values = line.strip().split('\t')
-                    if len(values) < 3:
-                        logging.warning(f"Invalid line format: {line.strip()}. Skipping...")
+                    if line.strip() == '' or not '\t' in line:
                         continue
 
-                    species = self._extract_species_from_filename(values[0])
-
-                    if input_genome is None:
-                        input_genome = values[1]
+                    parts = line.strip().split('\t')
+                    if len(parts) < 3:
                         continue
 
+                    # Extract ANI value
                     try:
-                        ani_value = float(values[2])
-                    except ValueError:
-                        logging.warning(f"Invalid ANI value: {values[2]}. Skipping...")
+                        ani_value = float(parts[2])
+                        if ani_value >= threshold:
+                            logging.info(f"Found ANI value {ani_value} above threshold {threshold} for {parts[0]} and {parts[1]}")
+                            return True, parts[0], parts[1], ani_value
+                    except (ValueError, IndexError):
                         continue
 
-                    if ani_value > best_match['ani']:
-                        best_match = {'species': species, 'ani': ani_value}
-
-            if best_match['ani'] >= threshold:
-                logging.info(f"Best match: {best_match['species']} with ANI {best_match['ani']:.4f}")
-                return [best_match['species']]
-            else:
-                logging.warning(f"No species identified above the threshold. Best match: {best_match['species']} with ANI {best_match['ani']:.4f}")
-                return ['Unknown']
-        except IOError as e:
-            logging.error(f"Error reading tab file: {e}")
-            return ['Unknown']
+            logging.info(f"No ANI values above threshold {threshold} found")
+            return False, None, None, 0.0
+        except Exception as e:
+            logging.error(f"Error checking species above threshold: {e}")
+            return False, None, None, 0.0
 
 
 def main_local():
+    # This is a placeholder for local testing
     pass
-    
+
 
 if __name__ == "__main__":
     main_local()

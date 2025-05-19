@@ -6,6 +6,11 @@ import os
 import csv
 import shutil
 from pathlib import Path
+import sys
+
+# Import quiet mode module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from quiet_mode import QUIET_MODE
 
 
 class BlastRunner:
@@ -29,13 +34,21 @@ class BlastRunner:
 
     def create_blast_db(self):
         try:
+            # Build makeblastdb command
             make_db_cmd = [
                 'makeblastdb',
                 '-in', self.ref_sequence,
                 '-dbtype', 'nucl',
                 '-out', Path(self.db_folder) / self.db_name
             ]
-            subprocess.run(make_db_cmd, check=True)
+            
+            # In quiet mode, redirect output to /dev/null
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(make_db_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(make_db_cmd, check=True)
+                
             logging.info(f"BLAST database created for {self.ref_sequence} at {Path(self.db_folder) / self.db_name}")
         except subprocess.CalledProcessError as e:
             logging.error(f"Error in creating BLAST database: {e}")
@@ -44,6 +57,7 @@ class BlastRunner:
     def run_blast(self, genome_file, result_file_name):
         result_file = Path(self.results_folder) / result_file_name
         try:
+            # Build blastn command
             blast_cmd = [
                 'blastn',
                 '-query', genome_file,
@@ -51,7 +65,14 @@ class BlastRunner:
                 '-outfmt', self.output_format,
                 '-out', result_file
             ]
-            subprocess.run(blast_cmd, check=True)
+            
+            # In quiet mode, redirect output to /dev/null
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(blast_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(blast_cmd, check=True)
+                
             logging.info(f"BLAST search completed for {genome_file} with results saved to {result_file}")
         except subprocess.CalledProcessError as e:
             logging.error(f"Error in running BLAST search: {e}")
@@ -61,8 +82,9 @@ class BlastRunner:
         try:
             self.create_blast_db()
 
-            # Get a list of all genome files
+            # Get a list of all genome files (both .fasta and .fna extensions)
             genome_files = list(Path(self.genomes_folder).glob('*.fasta'))
+            genome_files.extend(list(Path(self.genomes_folder).glob('*.fna')))
             logging.info(f"Found {len(genome_files)} genome files.")
 
             if not genome_files:
@@ -96,13 +118,18 @@ class BlastRunner:
             raise
 
     def process_genomes(self):
-        for gb_file in Path(self.genomes_folder).glob('*.gbff'):
+        # Process GenBank files (.gbff, .gb, .gbk)
+        for gb_file in Path(self.genomes_folder).glob('*.gb*'):
             fasta_file = gb_file.with_suffix('.fasta')
             self.convert_gb_to_fasta(gb_file, fasta_file)
 
-        for fna_file in Path(self.genomes_folder).glob('*.fna'):
-            fasta_file = fna_file.with_suffix('.fasta')
-            shutil.copy(fna_file, fasta_file)
+        # Copy FASTA-formatted files (.fna, .fa) with .fasta extension
+        for ext in ['*.fna', '*.fa']:
+            for fasta_like_file in Path(self.genomes_folder).glob(ext):
+                fasta_file = fasta_like_file.parent / (fasta_like_file.stem + '.fasta')
+                if not fasta_file.exists():  # Only copy if .fasta equivalent doesn't exist
+                    shutil.copy(fasta_like_file, fasta_file)
+                    logging.info(f"Copied {fasta_like_file} to {fasta_file}")
 
         logging.info("Genome files processed.")
 

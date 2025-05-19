@@ -7,11 +7,8 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Union
 
-# Set up logging with more detailed output
-logging.basicConfig(
-    level=logging.DEBUG,  # Changed to DEBUG for more detail
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Get module logger without setting up a new configuration
+# This will respect the configuration from the main script
 logger = logging.getLogger('levan_synthesis')
 
 # Dynamically get the reference_plasmids folder
@@ -326,9 +323,12 @@ def run_levan_analysis(genome_path: Union[Path, str],
         if missing_files:
             raise FileNotFoundError(f"Missing reference files: {', '.join(missing_files)}")
 
-        # Set strain ID
+        # Set strain ID - use full filename without extension
         if strain_id is None:
-            strain_id = genome_path.stem
+            # Get filename without extension (removing only the final extension)
+            filename = genome_path.name
+            strain_id = os.path.splitext(filename)[0]
+            logging.info(f"Using strain ID from filename: {strain_id}")
 
         # Read and validate sequences
         sequences = read_fasta_sequences(genome_path)

@@ -58,12 +58,29 @@ class GenomeAnalysisResult:
     #clade_spacer_match_score: float
     #clade_genotype_score: float
 
-def setup_logging():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Remove the setup_logging function - we use the main script's logging instead
 
-
-def process_genomes(genome_files: List[Path], clade_classifier: CRISPRCladeClassifier, max_workers: int = 4) -> List[Dict]:
+def process_genomes(genome_files: List[Path], clade_classifier: CRISPRCladeClassifier, max_workers: int = 4, batch_size: int = 0) -> List[Dict]:
     # ensure_sudo_session()
+    processed_results = []
+    
+    # If batch_size is 0 or greater than the number of genomes, process all at once
+    if batch_size <= 0 or batch_size >= len(genome_files):
+        return _process_genome_batch(genome_files, clade_classifier, max_workers)
+    
+    # Otherwise, process in batches
+    logging.info(f"Processing genomes in batches of {batch_size}")
+    for i in range(0, len(genome_files), batch_size):
+        batch = genome_files[i:i+batch_size]
+        logging.info(f"Processing batch {i//batch_size + 1} with {len(batch)} genomes")
+        batch_results = _process_genome_batch(batch, clade_classifier, max_workers)
+        processed_results.extend(batch_results)
+        logging.info(f"Completed batch {i//batch_size + 1}, total processed: {len(processed_results)}/{len(genome_files)}")
+    
+    return processed_results
+
+def _process_genome_batch(genome_files: List[Path], clade_classifier: CRISPRCladeClassifier, max_workers: int = 4) -> List[Dict]:
+    """Process a batch of genomes in parallel"""
     processed_results = []
     futures = []
 
@@ -131,12 +148,17 @@ def genome_lock(genome_file: Path):
 def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassifier) -> Optional[Dict]:
     with genome_lock(genome_file):
         try:
-            logging.info(f"Starting processing for genome file: {genome_file}")
-
+            # Use debug level for routine logs to avoid spamming the console
+            logging.debug(f"Starting processing for genome file: {genome_file}")
+            
+            # Simply get the filename without extension - no special handling needed for any file formats
+            name_without_ext = os.path.splitext(genome_file.name)[0]
+            logging.debug(f"Processing genome: {name_without_ext}")
+            
             # Generate assembly statistics
             fasta_stats = FastaStatistics(genome_file)
             stats = fasta_stats.generate_assembly_statistics()
-            logging.info(f"Generated stats for {genome_file.name}")
+            logging.info(f"Generated stats for {genome_file.name}, name in stats: {stats['name']}")
 
             # MLST typing
             try:
@@ -212,8 +234,13 @@ def process_single_genome(genome_file: Path, clade_classifier: CRISPRCladeClassi
 
             logging.info(f"Classification results - Clade: {clade}, Score: {score}, Confidence: {confidence_level}")
 
+            # Get the complete filename without the extension
+            file_stem = genome_file.name
+            # Remove only the final extension (.fasta, .fna, etc.)
+            file_stem = os.path.splitext(file_stem)[0]
+            
             result = {
-                'name': stats['name'],
+                'name': file_stem,  # Use the clean filename without extension
                 'contig_count': stats['contig_count'],
                 'N50_value': stats['N50_value'],
                 'largest_contig': stats['largest_contig'],
@@ -288,7 +315,7 @@ def write_results_to_csv(results: List[Dict], output_path: Path) -> None:
             'cr4_spacers', 'crispr_genotype_extra_info', 'capsule_locus',
             'cellulose_locus', 'lps_locus', 'sorbitol_locus', 'flag_i_locus',
             'flag_ii_locus', 'flag_iii_locus', 'flag_iv_locus', 't3ss_i_locus',
-            't3ss_ii_locus', 't6ss_i_locus', 't6ss_ii_locus', 'flag3_locus',
+            't3ss_ii_locus', 't6ss_i_locus', 't6ss_ii_locus', 'flag3_locus', 'ompa_locus',
             'clade', 'clade_confidence_score', 'clade_confidence_level',
             'levan_synthesis'
         ]
@@ -374,16 +401,61 @@ def keep_loci_files(output_dir: Path) -> None:
         type_folders = [
             'types_capsule', 'types_cellulose', 'types_lps', 'types_srl',
             'types_flag_I', 'types_flag_II', 'types_flag_III', 'types_flag_IV',
-            'types_T3SS_I', 'types_T3SS_II', 'types_T6SS_I', 'types_T6SS_II', 'types_flag3'
+            'types_T3SS_I', 'types_T3SS_II', 'types_T6SS_I', 'types_T6SS_II', 'types_flag3',
+            'types_ompa'  # Add ompA types folder to the list
         ]
 
         def process_types_finder_folders(types_finder_folder: Path, new_types_finder_folder: Path) -> None:
             for genome_folder in types_finder_folder.iterdir():
                 if genome_folder.is_dir():
+                    # Get full genome name without just the final extension
+                    genome_name = genome_folder.name
+                    if any(genome_name.lower().endswith(ext) for ext in ['.fasta', '.fa', '.fna']):
+                        genome_name = os.path.splitext(genome_name)[0]
+                    
                     for type_folder in type_folders:
                         locus_folder = genome_folder / type_folder
                         if locus_folder.exists():
-                            process_locus_folder(locus_folder, new_types_finder_folder, genome_folder.name, type_folder)
+                            if type_folder == 'types_ompa':
+                                # Special handling for ompA types (different structure than other types)
+                                process_ompa_folder(locus_folder, new_types_finder_folder, genome_name)
+                            else:
+                                # Standard processing for other types
+                                process_locus_folder(locus_folder, new_types_finder_folder, genome_name, type_folder)
+
+        def process_ompa_folder(ompa_folder: Path, new_types_finder_folder: Path, genome_name: str) -> None:
+            # For ompA, we only want to keep .gbk and .fna files as requested
+            files_to_copy = []
+            
+            # Check for GenBank files (primary output)
+            gbk_file = ompa_folder / "OMPA.gbk"
+            if gbk_file.exists():
+                files_to_copy.append(gbk_file)
+            
+            # Check for FASTA files (extracted sequences)
+            fna_file = ompa_folder / "extracted_ompa.fasta"
+            if fna_file.exists():
+                files_to_copy.append(fna_file)
+            
+            # Also check prokka subfolder for .gbk and .fna files only
+            prokka_folder = ompa_folder / "prokka_output"
+            if prokka_folder.exists():
+                for ext in ['.gbk', '.fna']:  # Only include .gbk and .fna files
+                    files_to_copy.extend(prokka_folder.glob(f"*{ext}"))
+            
+            # Create target directory
+            new_location = new_types_finder_folder / genome_name / "types_ompa"
+            new_location.mkdir(parents=True, exist_ok=True)
+            
+            # Copy only selected files
+            logging.info(f"Copying {len(files_to_copy)} .gbk and .fna files for ompA typing")
+            for file in files_to_copy:
+                if file.exists():
+                    try:
+                        shutil.copy2(str(file), str(new_location / file.name))
+                        logging.info(f"Copied {file} to {new_location / file.name}")
+                    except Exception as e:
+                        logging.error(f"Error copying file {file}: {str(e)}")
 
         def process_locus_folder(locus_folder: Path, new_types_finder_folder: Path, genome_name: str,
                                  type_folder: str) -> None:
@@ -411,10 +483,15 @@ def keep_loci_files(output_dir: Path) -> None:
 def process_types_finder_folders(types_finder_folder: Path, new_types_finder_folder: Path) -> None:
     for genome_folder in types_finder_folder.iterdir():
         if genome_folder.is_dir():
+            # Get full genome name without just the final extension
+            genome_name = genome_folder.name
+            if any(genome_name.lower().endswith(ext) for ext in ['.fasta', '.fa', '.fna']):
+                genome_name = os.path.splitext(genome_name)[0]
+                
             for locus_type in ['types_capsule', 'types_cellulose', 'types_lps', 'types_srl']:
                 locus_folder = genome_folder / locus_type
                 if locus_folder.exists():
-                    copy_loci_files(locus_folder, new_types_finder_folder, genome_folder.name, locus_type)
+                    copy_loci_files(locus_folder, new_types_finder_folder, genome_name, locus_type)
 
 def copy_loci_files(locus_folder: Path, new_types_finder_folder: Path, genome_name: str, locus_type: str) -> None:
     prokka_folder = locus_folder / 'prokka'
@@ -494,5 +571,4 @@ def ensure_sudo_session():
     logging.info("Sudo privileges acquired. Continuing...")
 
 
-# Setup logging when the module is imported
-setup_logging()
+# No longer setting up logging here - using the main script's logging configuration

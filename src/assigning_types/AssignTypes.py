@@ -3,6 +3,13 @@ import subprocess
 import pandas as pd
 from Bio import SeqIO
 import logging
+import sys
+from pathlib import Path
+
+# Import the quiet_mode module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from quiet_mode import QUIET_MODE
+
 from assigning_types.Database import Database
 from database.BlastRunner import BlastRunner
 from database.FlankGenesForBlast import FlankGeneExtractor, PostBlastOutput
@@ -27,7 +34,12 @@ class AssignTypes:
         cmd = f"makeblastdb -in {self.input_genome} -dbtype nucl -out {self.blast_db}"
         logging.info(f"Running command: {cmd}")
         try:
-            subprocess.run(cmd, shell=True, check=True)
+            # Respect quiet mode when running subprocess
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(cmd, shell=True, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(cmd, shell=True, check=True)
         except subprocess.CalledProcessError as e:
             logging.error(f"Error creating BLAST database: {e}")
             raise
@@ -40,7 +52,12 @@ class AssignTypes:
         )
         logging.info(f"Running BLAST with command: {cmd}")
         try:
-            subprocess.run(cmd, shell=True, check=True)
+            # Respect quiet mode when running subprocess
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(cmd, shell=True, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(cmd, shell=True, check=True)
         except subprocess.CalledProcessError as e:
             logging.error(f"Error running BLAST: {e}")
             raise

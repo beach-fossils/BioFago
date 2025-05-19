@@ -12,6 +12,11 @@ import shutil
 from Bio import SeqIO
 from dataclasses import dataclass
 import json
+import argparse
+
+# Import quiet mode module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from quiet_mode import QUIET_MODE
 
 # Dynamic Path Setup
 BASE_PATH = Path(__file__).resolve().parent.parent.parent
@@ -24,6 +29,12 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Allow external configuration of log level
+def set_log_level(level):
+    """Set the log level for this module."""
+    logger.setLevel(level)
+    logger.debug(f"MLST typer log level set to {level}")
 
 
 @dataclass
@@ -48,7 +59,7 @@ class MLSTTyper:
 
     def __init__(
             self,
-            min_identity: float = 99.0
+            min_identity: float = 98.5
     ):
         """Initialize MLSTTyper."""
         self.reference_dir = REFERENCE_MLST_PATH
@@ -125,20 +136,30 @@ class MLSTTyper:
                 '-out', str(db_path)
             ]
             try:
-                result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+                if QUIET_MODE:
+                    with open(os.devnull, 'w') as devnull:
+                        subprocess.run(cmd, check=True, stdout=devnull, stderr=devnull)
+                else:
+                    result = subprocess.run(cmd, check=True, capture_output=True, text=True)
                 logger.info(f"Created BLAST database for {gene}")
             except subprocess.CalledProcessError as e:
                 logger.error(f"BLAST database creation failed for {gene}")
-                logger.error(f"Error output: {e.stderr}")
+                logger.error(f"Error output: {e.stderr if hasattr(e, 'stderr') else 'N/A'}")
                 raise RuntimeError(f"Failed to create BLAST database for {gene}")
 
     def _run_blast(self, genome_path: Path, gene: str) -> Optional[BlastResult]:
-        """Run BLAST for a specific gene."""
+        """
+        Run BLAST for a specific gene and select the best hit.
+        The best hit is determined first by highest identity, then by coverage relative to the allele.
+        """
         logger.info(f"Running BLAST for {gene}...")
+        logger.debug(f"Genome path: {genome_path}")
 
         # Use temporary directory for database
         db_path = self.blast_db_dir / gene / gene
         output_file = self.temp_dir / f"{gene}_blast.txt"
+        logger.debug(f"BLAST database path: {db_path}")
+        logger.debug(f"BLAST output file: {output_file}")
 
         cmd = [
             'blastn',
@@ -146,36 +167,81 @@ class MLSTTyper:
             '-db', str(db_path),
             '-outfmt', '6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore',
             '-out', str(output_file),
-            '-max_target_seqs', '1'
+            '-max_target_seqs', '10'  # Increased to allow finding multiple hits
         ]
+        logger.debug(f"BLAST command: {' '.join(cmd)}")
 
         try:
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            if QUIET_MODE:
+                logger.debug("Running in QUIET mode, suppressing subprocess output")
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                logger.debug("Running with output visible")
+                result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+                logger.debug(f"BLAST stdout: {result.stdout[:200] if result.stdout else 'empty'}")
+                logger.debug(f"BLAST stderr: {result.stderr[:200] if result.stderr else 'empty'}")
 
             if not output_file.stat().st_size:
                 logger.warning(f"No BLAST hits found for {gene}")
                 return None
 
+            # First group hits by subject_id (allele)
+            allele_hits = {}
             with open(output_file) as f:
-                line = f.readline().strip()
-                if not line:
-                    return None
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
 
-                fields = line.split('\t')
-                fields[2] = float(fields[2])  # Convert identity to float
-
-                # Log BLAST result details
-                logger.info(f"{gene} BLAST result: Identity={fields[2]}%, Length={fields[3]}, E-value={fields[10]}")
-
-                return BlastResult(*fields)
+                    fields = line.split('\t')
+                    if len(fields) < 12:  # Ensure all fields are present
+                        logger.debug(f"Invalid BLAST output line: {line}")
+                        continue
+                    
+                    # Convert numeric fields
+                    fields[2] = float(fields[2])  # identity
+                    fields[3] = int(fields[3])    # alignment length
+                    fields[11] = float(fields[11])  # bitscore
+                    
+                    # Group by subject_id (allele)
+                    subject_id = fields[1]
+                    if subject_id not in allele_hits:
+                        allele_hits[subject_id] = []
+                    allele_hits[subject_id].append(fields)
+            
+            # For each allele, select the hit with highest bitscore
+            best_hits_per_allele = []
+            for subject_id, hits in allele_hits.items():
+                best_hit = max(hits, key=lambda x: float(x[11]))  # sort by bitscore
+                best_hits_per_allele.append(best_hit)
+            
+            # First prioritize 100% identity matches
+            perfect_matches = [hit for hit in best_hits_per_allele if hit[2] == 100.0]
+            
+            if perfect_matches:
+                logger.debug(f"Found {len(perfect_matches)} perfect matches for {gene}")
+                # Among perfect matches, select the one with highest coverage
+                best_hit = max(perfect_matches, key=lambda x: int(x[3]))
+            else:
+                # Otherwise, sort by identity first, then by alignment length
+                logger.debug(f"No perfect matches, selecting best among {len(best_hits_per_allele)} candidate alleles")
+                best_hit = max(best_hits_per_allele, key=lambda x: (float(x[2]), int(x[3])))
+            
+            # Log the selected best hit
+            logger.info(f"{gene} BLAST result: Identity={best_hit[2]}%, Length={best_hit[3]}, E-value={best_hit[10]}")
+            logger.debug(f"Selected best hit: Subject={best_hit[1]}, Bitscore={best_hit[11]}")
+            
+            # Create BlastResult from the best hit
+            return BlastResult(*best_hit)
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"BLAST error for {gene}: {e.stderr}")
+            logger.error(f"BLAST error for {gene}: {e.stderr if hasattr(e, 'stderr') else 'N/A'}")
             return None
         except Exception as e:
             logger.error(f"Error processing BLAST results for {gene}: {e}")
+            logger.debug(f"Exception details:", exc_info=True)
             return None
-
 
     def cleanup(self) -> None:
         """Clean up all temporary files."""
@@ -195,7 +261,7 @@ class MLSTTyper:
             allele_combination: String of allele numbers separated by hyphens
 
         Returns:
-            dict: Pattern information including ST and clades, or Novel status
+            dict: Pattern information including ST and status
         """
         try:
             with open(JSON_PATTERNS) as f:
@@ -207,7 +273,7 @@ class MLSTTyper:
                     return {
                         'status': 'Known',
                         'st': st,
-                        'clades': info['clades']
+                        'clades': [st]  # Use ST as the clade if no clades key exists
                     }
 
             # If no match found, it's a novel combination
@@ -275,11 +341,24 @@ class MLSTTyper:
 def main():
     """Command line interface."""
     try:
+        # Allow log level to be set from command line
+        parser = argparse.ArgumentParser(description='MLST Typer')
+        parser.add_argument('--genome', type=str, help='Path to genome FASTA file',
+                           default="/Volumes/Crucial_X9/biofago_2025/c_BioFago_ompA_names_fixed_last_version/tests/GCF_012367585.1_GCF_012367585.1_ASM1236758v1_genomic.fna")
+        parser.add_argument('--log_level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], 
+                           default='INFO', help='Set logging level')
+        args = parser.parse_args()
+        
+        # Set log level
+        log_level = getattr(logging, args.log_level)
+        logger.setLevel(log_level)
+        logger.debug(f"Log level set to {args.log_level}")
+        
         # Initialize the typer
         typer = MLSTTyper()
 
-        # Test genome path
-        test_genome = "/Users/josediogomoura/Documents/BioFago/BioFago/tests/genomes/GCA_000027205.1_ASM2720v1_genomic.fasta"
+        # Test genome path (use command line arg if provided)
+        test_genome = args.genome
 
         logger.info(f"Starting MLST typing for genome: {test_genome}")
         result = typer.type_genome(test_genome)

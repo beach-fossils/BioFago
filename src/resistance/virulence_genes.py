@@ -6,6 +6,12 @@ import pandas as pd
 from typing import Dict, List, Set
 import tempfile
 from Bio import SeqIO
+import os
+import sys
+
+# Import quiet mode
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from quiet_mode import QUIET_MODE
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -62,12 +68,16 @@ class VirulenceGenes:
         ]
         logger.info(f"Creating BLAST database with command: {' '.join(make_db_cmd)}")
         try:
-            subprocess.run(make_db_cmd, check=True, capture_output=True, text=True)
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(make_db_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(make_db_cmd, check=True, capture_output=True, text=True)
             logger.info(f"BLAST database created at {blast_db_name}")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error creating BLAST database: {e}")
-            logger.error(f"STDOUT: {e.stdout}")
-            logger.error(f"STDERR: {e.stderr}")
+            logger.error(f"STDOUT: {e.stdout if hasattr(e, 'stdout') else 'N/A'}")
+            logger.error(f"STDERR: {e.stderr if hasattr(e, 'stderr') else 'N/A'}")
             raise
         return blast_db_name
 
@@ -100,12 +110,16 @@ class VirulenceGenes:
 
             logger.info(f"Running BLAST command: {' '.join(blast_cmd)}")
             try:
-                subprocess.run(blast_cmd, check=True, capture_output=True, text=True)
+                if QUIET_MODE:
+                    with open(os.devnull, 'w') as devnull:
+                        subprocess.run(blast_cmd, check=True, stdout=devnull, stderr=devnull)
+                else:
+                    subprocess.run(blast_cmd, check=True, capture_output=True, text=True)
                 logger.info(f"BLAST search completed for {self.genome_file} with results saved to {result_file}")
             except subprocess.CalledProcessError as e:
                 logger.error(f"Error running BLAST: {e}")
-                logger.error(f"STDOUT: {e.stdout}")
-                logger.error(f"STDERR: {e.stderr}")
+                logger.error(f"STDOUT: {e.stdout if hasattr(e, 'stdout') else 'N/A'}")
+                logger.error(f"STDERR: {e.stderr if hasattr(e, 'stderr') else 'N/A'}")
                 raise
 
             self._parse_results(result_file)

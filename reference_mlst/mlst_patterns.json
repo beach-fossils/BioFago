@@ -1,269 +1,134 @@
 {
-    "ST-32": {
-        "allele_combination": "3-4-8-3-8-5-4-18-9-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-29": {
-        "allele_combination": "3-4-8-3-8-5-4-15-9-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-26": {
-        "allele_combination": "3-4-8-3-8-5-4-18-6-5",
-        "clades": [
-            "Widely Prevalent (WP) Ib",
-            "Widely Prevalent (WP) II",
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-10": {
-        "allele_combination": "1-1-1-1-3-7-15-2-5-14",
-        "clades": [
-            "Rubus I"
-        ]
-    },
-    "ST-7": {
-        "allele_combination": "1-1-1-1-3-8-13-1-1-12",
-        "clades": [
-            "Rubus II"
-        ]
-    },
-    "ST-33": {
-        "allele_combination": "3-3-8-3-8-5-4-18-13-6",
-        "clades": [
-            "Eastern North American (ENA) IV"
-        ]
-    },
-    "ST-28": {
-        "allele_combination": "3-4-8-3-8-5-4-18-8-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-35": {
-        "allele_combination": "3-4-7-6-8-5-4-18-9-6",
-        "clades": [
-            "Western North American (WNA) III"
-        ]
-    },
-    "ST-40": {
-        "allele_combination": "5-4-3-4-5-4-8-8-13-10",
-        "clades": [
-            "B-Group II"
-        ]
-    },
-    "ST-17": {
-        "allele_combination": "3-4-8-3-8-5-4-18-6-4",
-        "clades": [
-            "Widely Prevalent (WP) Ib"
-        ]
-    },
-    "ST-24": {
-        "allele_combination": "3-4-8-3-8-5-4-11-6-5",
-        "clades": [
-            "Widely Prevalent (WP) Ib"
-        ]
-    },
-    "ST-6": {
-        "allele_combination": "1-1-1-1-1-7-12-4-5-19",
-        "clades": [
-            "Rubus II"
-        ]
+    "ST-1": {
+        "allele_combination": "1-1-1-1-1-1-1-1-1-1"
     },
     "ST-8": {
-        "allele_combination": "1-1-1-1-3-6-14-1-4-15",
-        "clades": [
-            "Rubus III"
-        ]
-    },
-    "ST-11": {
-        "allele_combination": "1-1-1-1-2-7-16-3-5-13",
-        "clades": [
-            "Rubus I"
-        ]
-    },
-    "ST-22": {
-        "allele_combination": "3-4-8-3-8-5-4-18-19-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-20": {
-        "allele_combination": "3-4-6-3-8-5-4-18-9-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-13": {
-        "allele_combination": "3-4-8-3-8-5-3-18-6-5",
-        "clades": [
-            "Widely Prevalent (WP) Ib"
-        ]
+        "allele_combination": "1-1-1-1-1-1-1-6-1-1"
     },
     "ST-2": {
-        "allele_combination": "1-1-1-1-3-9-10-4-5-19",
-        "clades": [
-            "Rubus II"
-        ]
+        "allele_combination": "1-1-1-1-1-1-1-1-2-1"
     },
-    "ST-3": {
-        "allele_combination": "1-1-1-1-2-7-11-4-3-16",
-        "clades": [
-            "Rubus I"
-        ]
-    },
-    "ST-9": {
-        "allele_combination": "1-1-1-1-3-6-14-1-4-16",
-        "clades": [
-            "Rubus I",
-            "Rubus III"
-        ]
-    },
-    "ST-39": {
-        "allele_combination": "3-4-3-7-5-4-7-6-12-7",
-        "clades": [
-            "B-Group I"
-        ]
-    },
-    "ST-44": {
-        "allele_combination": "1-1-1-1-3-7-9-1-2-17",
-        "clades": [
-            "Rubus II"
-        ]
-    },
-    "ST-1": {
-        "allele_combination": "5-4-2-6-4-4-1-7-18-8",
-        "clades": [
-            "B-Group I"
-        ]
-    },
-    "ST-36": {
-        "allele_combination": "2-2-4-6-5-1-5-9-16-1",
-        "clades": [
-            "B-Group IV"
-        ]
-    },
-    "ST-19": {
-        "allele_combination": "3-4-8-2-8-5-4-18-9-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-23": {
-        "allele_combination": "3-4-8-3-8-5-4-10-6-5",
-        "clades": [
-            "Widely Prevalent (WP) Ib"
-        ]
-    },
-    "ST-25": {
-        "allele_combination": "3-4-8-3-8-5-4-13-6-5",
-        "clades": [
-            "Widely Prevalent (WP) II"
-        ]
-    },
-    "ST-27": {
-        "allele_combination": "3-4-8-3-8-5-4-10-7-5",
-        "clades": [
-            "Widely Prevalent (WP) Ib"
-        ]
-    },
-    "ST-16": {
-        "allele_combination": "3-4-8-3-8-5-4-18-6-2",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-34": {
-        "allele_combination": "3-4-7-6-8-5-4-12-9-6",
-        "clades": [
-            "Western North American (WNA) III"
-        ]
-    },
-    "ST-42": {
-        "allele_combination": "5-4-3-5-5-1-8-8-17-3",
-        "clades": [
-            "B-Group III"
-        ]
-    },
-    "ST-31": {
-        "allele_combination": "3-4-8-3-8-3-4-18-9-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-5": {
-        "allele_combination": "1-1-1-1-3-7-11-5-5-18",
-        "clades": [
-            "Rubus I"
-        ]
-    },
-    "ST-38": {
-        "allele_combination": "4-2-3-6-4-4-6-7-18-11",
-        "clades": [
-            "B-Group I"
-        ]
-    },
-    "ST-4": {
-        "allele_combination": "1-1-1-1-3-7-11-4-5-18",
-        "clades": [
-            "Rubus I"
-        ]
-    },
-    "ST-41": {
-        "allele_combination": "5-4-3-4-5-4-8-8-14-10",
-        "clades": [
-            "B-Group II"
-        ]
-    },
-    "ST-15": {
-        "allele_combination": "3-4-8-3-8-5-3-18-9-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-14": {
-        "allele_combination": "3-4-8-3-8-2-3-18-9-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-18": {
-        "allele_combination": "3-4-8-3-6-5-4-18-9-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-12": {
-        "allele_combination": "3-4-8-3-8-5-2-18-9-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
-    },
-    "ST-37": {
-        "allele_combination": "4-2-5-4-7-4-6-17-15-1",
-        "clades": [
-            "B-Group I"
-        ]
+    "ST-20": {
+        "allele_combination": "2-2-3-3-2-2-13-17-4-18"
     },
     "ST-21": {
-        "allele_combination": "3-4-8-3-8-5-4-18-10-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
+        "allele_combination": "2-2-3-3-2-7-16-4-15-11"
     },
-    "ST-43": {
-        "allele_combination": "5-4-3-4-5-4-8-14-11-9",
-        "clades": [
-            "Unknown"
-        ]
+    "ST-4": {
+        "allele_combination": "1-3-1-1-1-1-1-1-3-2"
+    },
+    "ST-10": {
+        "allele_combination": "1-1-1-1-1-1-1-1-7-1"
+    },
+    "ST-3": {
+        "allele_combination": "1-1-2-2-1-1-1-1-1-2"
+    },
+    "ST-22": {
+        "allele_combination": "3-1-4-4-3-3-3-7-3-8"
+    },
+    "ST-23": {
+        "allele_combination": "1-1-1-1-1-1-1-1-2-13"
+    },
+    "ST-24": {
+        "allele_combination": "1-1-1-1-1-1-1-11-2-1"
+    },
+    "ST-13": {
+        "allele_combination": "2-2-3-3-6-2-9-5-4-3"
+    },
+    "ST-25": {
+        "allele_combination": "2-2-3-3-2-6-5-4-6-14"
+    },
+    "ST-11": {
+        "allele_combination": "2-2-3-3-4-2-6-8-4-5"
+    },
+    "ST-12": {
+        "allele_combination": "1-1-1-1-1-1-1-1-5-1"
+    },
+    "ST-14": {
+        "allele_combination": "1-1-5-1-1-1-1-1-1-1"
+    },
+    "ST-26": {
+        "allele_combination": "1-1-1-1-1-1-2-1-2-1"
+    },
+    "ST-27": {
+        "allele_combination": "2-2-3-3-2-9-12-5-4-3"
+    },
+    "ST-28": {
+        "allele_combination": "2-2-3-3-4-2-4-5-14-4"
+    },
+    "ST-15": {
+        "allele_combination": "2-2-3-3-2-6-5-4-6-4"
+    },
+    "ST-29": {
+        "allele_combination": "1-1-4-7-3-3-15-16-16-17"
+    },
+    "ST-16": {
+        "allele_combination": "2-2-3-3-2-2-7-4-9-10"
     },
     "ST-30": {
-        "allele_combination": "3-4-8-3-8-5-4-16-9-5",
-        "clades": [
-            "Widely Prevalent (WP) Ia"
-        ]
+        "allele_combination": "3-1-7-2-5-3-11-9-11-19"
+    },
+    "ST-19": {
+        "allele_combination": "5-4-6-2-3-5-10-10-12-6"
+    },
+    "ST-31": {
+        "allele_combination": "1-1-1-6-1-1-1-1-1-1"
+    },
+    "ST-7": {
+        "allele_combination": "1-1-1-1-1-1-1-3-2-1"
+    },
+    "ST-32": {
+        "allele_combination": "1-1-1-1-1-1-1-15-2-1"
+    },
+    "ST-17": {
+        "allele_combination": "1-1-1-1-1-1-1-3-8-1"
+    },
+    "ST-33": {
+        "allele_combination": "1-1-1-1-1-1-1-1-2-15"
+    },
+    "ST-34": {
+        "allele_combination": "1-1-2-2-1-1-1-14-1-2"
+    },
+    "ST-18": {
+        "allele_combination": "3-1-4-5-3-5-3-7-10-9"
+    },
+    "ST-35": {
+        "allele_combination": "1-1-1-1-1-8-1-1-1-1"
+    },
+    "ST-36": {
+        "allele_combination": "2-2-3-3-2-2-4-12-4-7"
+    },
+    "ST-37": {
+        "allele_combination": "4-4-4-2-5-3-8-9-11-16"
+    },
+    "ST-38": {
+        "allele_combination": "2-2-3-3-2-2-4-5-4-7"
+    },
+    "ST-39": {
+        "allele_combination": "3-1-4-4-3-3-3-7-18-8"
+    },
+    "ST-6": {
+        "allele_combination": "1-1-1-1-1-1-2-1-1-1"
+    },
+    "ST-9": {
+        "allele_combination": "1-1-1-1-1-4-2-1-1-1"
+    },
+    "ST-40": {
+        "allele_combination": "1-1-1-1-8-1-1-1-1-1"
+    },
+    "ST-41": {
+        "allele_combination": "1-1-1-1-1-1-14-1-1-1"
+    },
+    "ST-42": {
+        "allele_combination": "4-4-8-4-7-3-8-13-17-6"
+    },
+    "ST-44": {
+        "allele_combination": "1-1-1-1-1-1-1-1-19-1"
+    },
+    "ST-43": {
+        "allele_combination": "3-1-4-4-3-3-3-18-13-12"
+    },
+    "ST-5": {
+        "allele_combination": "1-1-1-1-1-1-1-2-1-1"
     }
 }

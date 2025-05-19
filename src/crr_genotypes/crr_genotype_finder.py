@@ -15,7 +15,12 @@ import multiprocessing
 import csv
 from io import StringIO
 import re
+import sys
 from typing import Dict, Tuple, Optional, Any, List
+
+# Import quiet mode module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from quiet_mode import QUIET_MODE
 
 
 
@@ -88,7 +93,11 @@ class CRRFinder:
                 '-logfile', str(self.output_folder / 'makeblastdb.log')
             ]
 
-            subprocess.run(makeblastdb_cmd, check=True, capture_output=True)
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(makeblastdb_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(makeblastdb_cmd, check=True, capture_output=True)
 
             # Run BLAST search
             blastn_cmd = [
@@ -99,7 +108,11 @@ class CRRFinder:
                 '-outfmt', '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore'
             ]
 
-            subprocess.run(blastn_cmd, check=True, capture_output=True)
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(blastn_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(blastn_cmd, check=True, capture_output=True)
 
             self.logger.info(f"BLAST search completed successfully")
         except subprocess.CalledProcessError as e:

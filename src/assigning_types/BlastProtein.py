@@ -2,6 +2,12 @@ import csv
 import subprocess
 import pandas as pd
 from pathlib import Path
+import os
+import sys
+
+# Import quiet mode module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from quiet_mode import QUIET_MODE
 
 
 def parse_protein_faa(file_path):
@@ -52,7 +58,14 @@ class BlastProtein:
                 '-dbtype', 'prot',
                 '-out', str(self.db_folder / self.db_name)
             ]
-            subprocess.run(make_db_cmd, check=True)
+            
+            # Respect quiet mode when running subprocess
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(make_db_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(make_db_cmd, check=True)
+                
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error in creating BLAST database: {e}")
 
@@ -70,7 +83,14 @@ class BlastProtein:
                 '-out', str(blast_output_file),
                 '-outfmt', '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore'
             ]
-            subprocess.run(blast_cmd, check=True)
+            
+            # Respect quiet mode when running subprocess
+            if QUIET_MODE:
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.run(blast_cmd, check=True, stdout=devnull, stderr=devnull)
+            else:
+                subprocess.run(blast_cmd, check=True)
+                
             return blast_output_file
         except subprocess.CalledProcessError as e:
             raise Exception(f"Error in BLAST search: {e}")

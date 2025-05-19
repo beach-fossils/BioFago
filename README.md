@@ -122,21 +122,54 @@ python biofago_runner.py --input <input_path> --output_dir <output_directory> [o
 Available options:
 
 ```
---input: Specify the genome file (.fasta) to be processed as input (mandatory)
+--input: Specify the genome file (.fasta) or directory containing multiple genome files to be processed as input (mandatory)
 --output_dir: Specify the output directory for results (mandatory)
 --keep_sequence_loci: Flag to retain sequences for each analyzed locus (optional)
 --threshold_species: Set the ANI threshold for species assignment (optional, default: 0.95)
 --skip_species_assignment: Flag to skip the module to identify the species (optional)
 --log_level: Set logging verbosity (optional, choices: DEBUG, INFO, WARNING, ERROR, CRITICAL, default: INFO)
+--batch_size: Number of genomes to process in parallel (optional, default: 0 = process all at once)
+--num_workers: Number of worker processes for parallelization (optional, default: 4)
+--docker_limit: Maximum number of concurrent Docker containers (optional, default: 4)
+--quiet: Reduce console output and show only progress bars and essential messages (optional)
 ```
 
 
-*Example:*
+*Examples:*
 
 ```bash
+# Process a single genome
 python biofago_runner.py --input /path/to/genome1.fasta --output_dir /path/to/output --keep_sequence_loci
+
+# Process a directory with multiple genomes
+python biofago_runner.py --input /path/to/genomes_folder --output_dir /path/to/output --keep_sequence_loci
+
+# Process a large batch of genomes with controlled parallelism
+python biofago_runner.py --input /path/to/many_genomes --output_dir /path/to/output --batch_size 10 --num_workers 8 --docker_limit 4
+
+# Process genomes with minimal console output (just progress bars and final result)
+python biofago_runner.py --input /path/to/genomes --output_dir /path/to/output --quiet
 ```
 
+### Batch Processing and Parallelization
+
+ErwinATyper supports processing large batches of genomes efficiently:
+
+- **Batch Size (`--batch_size`)**: Process genomes in smaller batches to control memory usage. A value of 0 means process all genomes at once.
+- **Worker Processes (`--num_workers`)**: Control how many genomes are processed in parallel.
+- **Docker Container Limit (`--docker_limit`)**: Limit the number of concurrent Docker containers to prevent system overload.
+
+For best performance on large datasets (200+ genomes):
+
+1. Use a batch size of 10-20 genomes
+2. Set worker processes based on your CPU cores (typically 4-8)
+3. Limit Docker containers to 4-6 to avoid excessive resource usage
+
+### File Naming
+
+ErwinATyper preserves full genome filenames (without extension) in all results. For example:
+- Input file: `GCA_023183245.1_GCA_023183245.1_ASM2318324v1_genomic.fna`
+- Name in results: `GCA_023183245.1_GCA_023183245.1_ASM2318324v1_genomic`
 
 *Note: The output folders named `species_finder` and `types_finder` (if --keep_sequence_loci is used) are automatically created in the specified output directory.*
 
