@@ -468,7 +468,9 @@ class CRRFinder:
                     # Process each row and store in dictionary
                     for _, row in df.iterrows():
                         crr_type = row['CRR Type']
-                        crr_info = f"{crr_type} - Group: {row['Best Group']}, Subgroup: {row['Best Subgroup']}, Score: {row['composite_score']:.2f}"
+                        # Remove "Group " prefix if it exists to avoid duplication in output
+                        best_group = row['Best Group'].removeprefix('Group ') if isinstance(row['Best Group'], str) and row['Best Group'].startswith('Group ') else row['Best Group']
+                        crr_info = f"{crr_type} - Group: {best_group}, Subgroup: {row['Best Subgroup']}, Score: {row['composite_score']:.2f}"
                         crr_info_dict[crr_type] = crr_info
 
                     # Sort CRRs in consistent order (CRR4, CRR2, CRR1)
